@@ -34,6 +34,7 @@ bufferSize = len(buffer.value)
 bytesRead = c_ulong(0)
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
+
 '''
 def printHuanLeDou():
     print("欢乐豆")
@@ -44,17 +45,16 @@ def printHuanLeDou():
     else:
         print("Failed.")
 '''
-def huase(n):
-    return {
+
+huase = {
         b'\x00':'无',
         b'\x01':'  黑',
         b'\x02':'    红',
         b'\x03':'      花',
         b'\x04':'        方'
-        }[n]
+        }
 
-def dianshu(n):
-    return {
+dianshu = {
         b'\x00': '0',
         b'\x01': 'A',
         b'\x02': '2',
@@ -71,20 +71,20 @@ def dianshu(n):
         b'\x0d': 'K',
         b'\x0e': '小王',
         b'\x0f': '大王'
-        }[n]
+        }
 
 def f(address, g):
     if ReadProcessMemory(processHandle, address, buffer, bufferSize, byref(bytesRead)):
         memmove(byref(cval), buffer, sizeof(cval))
-        return g(cval.value)
+        return g[cval.value]
     else:
         return "Failed."
 
 def getCardsByAddressAndLen(pp, len):
     return '\n'.join(['   '.join([f(pp+8*i, huase),f(pp+8*i+1, dianshu)]) for i in range(0, len)])
 
-print("DIPAI", getCardsByAddressAndLen(DIPAI_ADDRESS, 8), DIVIDER_LINE, sep='\n')
-print("My Cards", getCardsByAddressAndLen(MY_CARD_ADDRESS, 25+8), DIVIDER_LINE, sep='\n')
+print("底牌", getCardsByAddressAndLen(DIPAI_ADDRESS, 8), DIVIDER_LINE, sep='\n')
+print("我的牌", getCardsByAddressAndLen(MY_CARD_ADDRESS, 25+8), DIVIDER_LINE, sep='\n')
 print("上一轮我出牌", getCardsByAddressAndLen(MyLastPlayed, 5), sep='\n')
 print("上一轮下家出牌", getCardsByAddressAndLen(XiaJiaLastPlayed, 5), sep='\n')
 print("上一轮对家出牌", getCardsByAddressAndLen(DuiJiaLastPlayed, 5), sep='\n')
