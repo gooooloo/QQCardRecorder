@@ -81,14 +81,16 @@ while 1==1:
     n = f(MY_LEFT_CARD_NUMBER_ADDRESS, ord)
     if n != myleftcnt:
         myleftcnt = n
-        print("底牌", getCardsByAddressAndLen(DIPAI_ADDRESS, 8), DIVIDER_LINE, sep='\n')
-        print("我的牌", getCardsByAddressAndLen(MY_CARD_ADDRESS, myleftcnt), DIVIDER_LINE, sep='\n')
+        if n == 25:
+            print("底牌", getCardsByAddressAndLen(DIPAI_ADDRESS, 8), DIVIDER_LINE, sep='\n')
+            print("我的牌", getCardsByAddressAndLen(MY_CARD_ADDRESS, myleftcnt), DIVIDER_LINE, sep='\n')
         n = f(LAST_ROUND_CARDS_NUMBER_ADDRESS, ord)
-        print("上一轮出牌数", n, sep=' ')
-        print("我   ", getCardsByAddressAndLen(MyLastPlayed, n), sep=' ')
-        print("下家 ", getCardsByAddressAndLen(XiaJiaLastPlayed, n), sep=' ')
-        print("对家 ", getCardsByAddressAndLen(DuiJiaLastPlayed, n), sep=' ')
-        print("上家 ", getCardsByAddressAndLen(ShangJiaLastPlayed, n), sep=' ')
+        if n > 0:
+            print("上一轮出牌数", n, sep=' ')
+            print("我   ", getCardsByAddressAndLen(MyLastPlayed, n), sep=' ')
+            print("下家 ", getCardsByAddressAndLen(XiaJiaLastPlayed, n), sep=' ')
+            print("对家 ", getCardsByAddressAndLen(DuiJiaLastPlayed, n), sep=' ')
+            print("上家 ", getCardsByAddressAndLen(ShangJiaLastPlayed, n), sep=' ')
 CloseHandle(processHandle)
 
 
