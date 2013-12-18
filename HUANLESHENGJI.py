@@ -64,6 +64,13 @@ dianshu = {
         b'\x0f': '大王'
         }
 
+xianshou = {
+        1:'我先出牌',
+        2:'下家先出牌',
+        3:'对家先出牌',
+        4:'上家先出牌'
+        }
+
 def f(address, g):
     if ReadProcessMemory(processHandle, address, buffer, bufferSize, byref(bytesRead)):
         memmove(byref(cval), buffer, sizeof(cval))
@@ -71,8 +78,13 @@ def f(address, g):
     else:
         return "Failed."
 
+def getOneCardByAddress(add):
+    return ''.join([f(add, huase),f(add+1, dianshu)])
+
 def getCardsByAddressAndLen(pp, len):
-    return ' '.join([''.join([f(pp+8*i, huase),f(pp+8*i+1, dianshu)]) for i in range(0, len)])
+    return ' '.join([getOneCardByAddress(pp+8*i) for i in range(0, len)])
+
+my = []; xiajia = []; duijia = []; shangjia = [];
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
 myleftcnt = 0
@@ -82,15 +94,27 @@ while 1==1:
     if n != myleftcnt:
         myleftcnt = n
         if n == 25:
+            my = []; xiajia = []; duijia = []; shangjia = [];
             print("底牌", getCardsByAddressAndLen(DIPAI_ADDRESS, 8), DIVIDER_LINE, sep='\n')
-            print("我的牌", getCardsByAddressAndLen(MY_CARD_ADDRESS, myleftcnt), DIVIDER_LINE, sep='\n')
-        n = f(LAST_ROUND_CARDS_NUMBER_ADDRESS, ord)
-        if n > 0:
-            print("上一轮出牌数", n, sep=' ')
-            print("我   ", getCardsByAddressAndLen(MyLastPlayed, n), sep=' ')
-            print("下家 ", getCardsByAddressAndLen(XiaJiaLastPlayed, n), sep=' ')
-            print("对家 ", getCardsByAddressAndLen(DuiJiaLastPlayed, n), sep=' ')
-            print("上家 ", getCardsByAddressAndLen(ShangJiaLastPlayed, n), sep=' ')
+            print("我的牌", getCardsByAddressAndLen(MY_CARD_ADDRESS, 25), DIVIDER_LINE, sep='\n')
+        elif n < 25:
+            
+            n = f(LAST_ROUND_CARDS_NUMBER_ADDRESS, ord)
+            x = f(MyLastPlayed - 0x2, ord)
+            
+            if n >= 0 and x > 0 and x < 5:                
+                my.append(getCardsByAddressAndLen(MyLastPlayed, n))
+                xiajia.append(getCardsByAddressAndLen(XiaJiaLastPlayed, n))                
+                duijia.append(getCardsByAddressAndLen(DuiJiaLastPlayed, n))
+                shangjia.append(getCardsByAddressAndLen(ShangJiaLastPlayed, n))
+
+                print("上一轮", xianshou[x], "出牌数", n, sep=' ')
+                print("我", my)
+                print("下家", xiajia)
+                print("对家", duijia)
+                print("上家", shangjia)
+                print(DIVIDER_LINE)
+                
 CloseHandle(processHandle)
 
 
