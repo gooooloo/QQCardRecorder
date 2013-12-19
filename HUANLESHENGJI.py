@@ -4,117 +4,85 @@ from time import sleep
 import psutil
 
 def getPid():
-    for proc in psutil.process_iter():
-        try:
-            if proc.name == 'HLSJ.exe':
-                return proc.pid
-        except (psutil.AccessDenied) as e:
-            ignoreExceptionBecauseOfPsUtilBug =("psutil.AccessDenied")
+	for proc in psutil.process_iter():
+		try:
+			if proc.name == 'HLSJ.exe':
+				return proc.pid
+		except (psutil.AccessDenied) as e:
+			ignoreExceptionBecauseOfPsUtilBug =("psutil.AccessDenied")
 
 OpenProcess = windll.kernel32.OpenProcess
 ReadProcessMemory = windll.kernel32.ReadProcessMemory
 CloseHandle = windll.kernel32.CloseHandle
 
 PROCESS_ALL_ACCESS = 0x1F0FFF
-DIPAI_ADDRESS = 0x004AE01E
-MY_CARD_ADDRESS = 0x4ae586
-LastPlayedBase = 0x4abe02+0x100-4
-MyLastPlayed = LastPlayedBase+0xb58
-ShangJiaLastPlayed = LastPlayedBase+0xe10
-DuiJiaLastPlayed = LastPlayedBase+0x10c8
-XiaJiaLastPlayed = LastPlayedBase+0x1380
-LAST_ROUND_CARDS_NUMBER_ADDRESS = 0x4acca8
-MY_LEFT_CARD_NUMBER_ADDRESS = 0x4ae7d8
-
+ADD_DIPAI = 0x004AE01E
+ADD_MY_CARDS = 0x4ae586
+ADD_MY_CARDS_NUMBER = 0x4ae7d8
+ADD_LAST_BASE = 0x4abe02+0x100-4
+ADD_LAST_ME = ADD_LAST_BASE+0xb58
+ADD_LAST_SHANG_JIA = ADD_LAST_BASE+0xe10
+ADD_LAST_DUI_JIA = ADD_LAST_BASE+0x10c8
+ADD_LAST_XIA_JIA = ADD_LAST_BASE+0x1380
+ADD_LAST_CARDS_NUMBER = 0x4acca8
 
 DIVIDER_LINE = "======"
 
 pid = getPid()
 
-buffer = c_char_p(b"The data goes here")
-ival = c_int()
-cval = c_char()
-bufferSize = len(buffer.value)
-bytesRead = c_ulong(0)
+huase = [ '', '黑', '红', '花', '方' ]
+dianshu = [ '0', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '十', 'J', 'Q', 'K', '小王', '大王' ]
+xianshou = ['出错了', '我先出牌', '下家先出牌', '对家先出牌', '上家先出牌' ]
 
-huase = {
-        b'\x00':'',
-        b'\x01':'黑',
-        b'\x02':'红',
-        b'\x03':'花',
-        b'\x04':'方'
-        }
+def f(address):
+	buffer = c_char_p(b"The data goes here")
+	cval = c_char()
+	bufferSize = len(buffer.value)
+	bytesRead = c_ulong(0)
+	if ReadProcessMemory(processHandle, address, buffer, bufferSize, byref(bytesRead)):
+		memmove(byref(cval), buffer, sizeof(cval))
+		return ord(cval.value)
+	else:
+		return "Failed."
 
-dianshu = {
-        b'\x00': '0',
-        b'\x01': 'A',
-        b'\x02': '2',
-        b'\x03': '3',
-        b'\x04': '4',
-        b'\x05': '5',
-        b'\x06': '6',
-        b'\x07': '7',
-        b'\x08': '8',
-        b'\x09': '9',
-        b'\x0a': '十',
-        b'\x0b': 'J',
-        b'\x0c': 'Q',
-        b'\x0d': 'K',
-        b'\x0e': '小王',
-        b'\x0f': '大王'
-        }
+g = lambda x : ''.join([huase[f(x)], dianshu[f(x+1)]])
+h = lambda x : ''.join([xianshou[f(x-2)], g(x)])
 
-xianshou = {
-        1:'我先出牌',
-        2:'下家先出牌',
-        3:'对家先出牌',
-        4:'上家先出牌'
-        }
-
-def f(address, g):
-    if ReadProcessMemory(processHandle, address, buffer, bufferSize, byref(bytesRead)):
-        memmove(byref(cval), buffer, sizeof(cval))
-        return g[cval.value] if type(g)==dict else g(cval.value) if hasattr(g, '__call__') else cval.value
-    else:
-        return "Failed."
-
-def getOneCardByAddress(add):
-    return ''.join([f(add, huase),f(add+1, dianshu)])
-
-def getCardsByAddressAndLen(pp, len):
-    return ' '.join([getOneCardByAddress(pp+8*i) for i in range(0, len)])
-
-my = []; xiajia = []; duijia = []; shangjia = [];
+def captureMem():
+	ret = {}
+	ret['myCardsCnt'] = f(ADD_MY_CARDS_NUMBER)
+	ret['mycards'] = [g(ADD_MY_CARDS + 0x8*i) for i in range(0, ret['myCardsCnt'])]
+	ret['diPaiCards'] = [g(ADD_DIPAI + 0x8*i) for i in range(0, 8)]
+	ret['lr_cnt'] = f(ADD_LAST_CARDS_NUMBER)
+	ret['lr_me'] = [h(ADD_LAST_ME + 0x8*i) for i in range(0, ret['lr_cnt'])]
+	ret['lr_XiaJia'] = [h(ADD_LAST_XIA_JIA + 0x8*i) for i in range(0, ret['lr_cnt'])]
+	ret['lr_DuiJia'] = [h(ADD_LAST_DUI_JIA + 0x8*i) for i in range(0, ret['lr_cnt'])]
+	ret['lr_ShangJia'] = [h(ADD_LAST_SHANG_JIA + 0x8*i) for i in range(0, ret['lr_cnt'])]
+	return ret
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
-myleftcnt = 0
+past = {'me':[], 'XiaJia':[], 'DuiJia':[], 'ShangJia':[]}
+mem = captureMem()
 while 1==1:
-    sleep(0.050)
-    n = f(MY_LEFT_CARD_NUMBER_ADDRESS, ord)
-    if n != myleftcnt:
-        myleftcnt = n
-        if n == 25:
-            my = []; xiajia = []; duijia = []; shangjia = [];
-            print("底牌", getCardsByAddressAndLen(DIPAI_ADDRESS, 8), DIVIDER_LINE, sep='\n')
-            print("我的牌", getCardsByAddressAndLen(MY_CARD_ADDRESS, 25), DIVIDER_LINE, sep='\n')
-        elif n < 25:
-            
-            n = f(LAST_ROUND_CARDS_NUMBER_ADDRESS, ord)
-            x = f(MyLastPlayed - 0x2, ord)
-            
-            if n >= 0 and x > 0 and x < 5:                
-                my.append(getCardsByAddressAndLen(MyLastPlayed, n))
-                xiajia.append(getCardsByAddressAndLen(XiaJiaLastPlayed, n))                
-                duijia.append(getCardsByAddressAndLen(DuiJiaLastPlayed, n))
-                shangjia.append(getCardsByAddressAndLen(ShangJiaLastPlayed, n))
+	sleep(0.050)
+	memOld = mem
+	mem = captureMem()
 
-                print("上一轮", xianshou[x], "出牌数", n, sep=' ')
-                print("我", my)
-                print("下家", xiajia)
-                print("对家", duijia)
-                print("上家", shangjia)
-                print(DIVIDER_LINE)
-                
+	if mem['myCardsCnt'] == 25:
+		past = {'me':[], 'XiaJia':[], 'DuiJia':[], 'ShangJia':[]}
+		#print(mem['diPaiCards'])
+
+	elif mem['myCardsCnt'] < memOld['myCardsCnt']: # means I played a card out
+		past['me'].append((mem['lr_me']))
+		past['XiaJia'].append((mem['lr_XiaJia']))
+		past['DuiJia'].append((mem['lr_DuiJia']))
+		past['ShangJia'].append((mem['lr_ShangJia']))
+
+		print('1 round')
+		if mem['myCardsCnt'] == 0: print(past)
+
+
+
 CloseHandle(processHandle)
 
 
