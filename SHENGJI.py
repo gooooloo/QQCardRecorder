@@ -1,21 +1,22 @@
+# -*- coding: cp936 -*-
 from ctypes import *
 from ctypes.wintypes import *
 from time import sleep
 import psutil
 
 ''' Vacabularies:
-XJ - XiaJia (ä¸‹å®¶)
-DJ - DuiJia (å¯¹å®¶)
-SJ - ShangJia (ä¸Šå®¶)
-HS - HuaSe (èŠ±è‰²ï¼Œå¦‚é»‘æ¡ƒï¼Œæ–¹å—ç­‰ç­‰)
-PM - PM (ç‰Œé¢ï¼Œå¦‚Aï¼Œ2ï¼Œ3ï¼ŒJï¼ŒQï¼Œå¤§ç‹ç­‰ç­‰)
-SXD - ShuiXianDa (è¯¥è½®è°å…ˆæ‰“çš„ï¼Œæˆ‘è¿˜æ˜¯ä¸‹å®¶è¿˜æ˜¯å¯¹å®¶ä¸Šå®¶)
+XJ - XiaJia (ÏÂ¼Ò)
+DJ - DuiJia (¶Ô¼Ò)
+SJ - ShangJia (ÉÏ¼Ò)
+HS - HuaSe (»¨É«£¬ÈçºÚÌÒ£¬·½¿éµÈµÈ)
+PM - PM (ÅÆÃæ£¬ÈçA£¬2£¬3£¬J£¬Q£¬´óÍõµÈµÈ)
+SXD - ShuiXianDa (¸ÃÂÖË­ÏÈ´òµÄ£¬ÎÒ»¹ÊÇÏÂ¼Ò»¹ÊÇ¶Ô¼ÒÉÏ¼Ò)
 '''
 
 def getPid(proc_name):
 	for proc in psutil.process_iter():
 		try:
-			if proc.name == proc_name
+			if proc.name == proc_name:
 				return proc.pid
 		except (psutil.AccessDenied) as e:
 			ignoreExceptionBecauseOfPsUtilBug =("psutil.AccessDenied")
@@ -50,9 +51,9 @@ ADD_SJ_LAST_ROUND = 0x004C7F96
 
 pid = getPid(PROC_NAME)
 
-HS = [ '', 'é»‘', 'çº¢', 'èŠ±', 'æ–¹' ] # the index matches with its int value in memory
-PM = [ 'å‡ºé”™äº†', 'A', '2', '3', '4', '5', '6', '7', '8', '9', 'å', 'J', 'Q', 'K', 'å°ç‹', 'å¤§ç‹' ] # the index matches with its int value in memory
-SXD = ['å‡ºé”™äº†', 'æˆ‘å…ˆå‡ºç‰Œ', 'ä¸‹å®¶å…ˆå‡ºç‰Œ', 'å¯¹å®¶å…ˆå‡ºç‰Œ', 'ä¸Šå®¶å…ˆå‡ºç‰Œ' ] # the index matches with its int value in memory
+HS = [ '', 'ºÚ', 'ºì', '»¨', '·½' ] # the index matches with its int value in memory
+PM = [ '³ö´íÁË', 'A', '2', '3', '4', '5', '6', '7', '8', '9', 'Ê®', 'J', 'Q', 'K', 'Ğ¡Íõ', '´óÍõ' ] # the index matches with its int value in memory
+SXD = ['³ö´íÁË', 'ÎÒÏÈ³öÅÆ', 'ÏÂ¼ÒÏÈ³öÅÆ', '¶Ô¼ÒÏÈ³öÅÆ', 'ÉÏ¼ÒÏÈ³öÅÆ' ] # the index matches with its int value in memory
 
 def readByteAsInt(address):
 	buffer = c_char_p(b"The data goes here")
@@ -93,7 +94,7 @@ def captureMem():
 
 	return ret
 
-thisRoundFinished = lambda ret: ret['ADD_MY_RECENT'] == 0 && ret['ADD_XJ_RECENT'] == 0 && ret['ADD_DJ_RECENT'] == 0 && ret['ADD_SJ_RECENT'] == 0
+thisRoundFinished = lambda ret: ret['ADD_MY_RECENT'] == 0 and ret['ADD_XJ_RECENT'] == 0 and ret['ADD_DJ_RECENT'] == 0 and ret['ADD_SJ_RECENT'] == 0
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
