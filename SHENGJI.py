@@ -104,15 +104,40 @@ thisRoundFinished = lambda ret: ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and r
 def onLastPlayed(totalList, lastPlayedList, label):
 	totalList.extend(lastPlayedList)
 	totalList.append('|')
+	for x in lastPlayedList: totalCards.remove(x)
 	print(label, lastPlayedList)
 	print(label, ''.join(totalList))
+	printTotalCards()
 
+def resetTotalCards():
+	totalCards = []
+	for x in PM[-2:]:
+		for i in range(0, 2) :
+			totalCards.append(x)
+	for hs in HS[-4:]:
+		for pm in PM[1: 14]:
+			for i in range(0, 2):
+				totalCards.append(''.join([hs,pm]))
+	return totalCards
 
+def printTotalCards():
+	c = '0'
+	for x in totalCards:
+		if x[0] != c:
+			c = x[0]
+			print()
+			print(c, end='')
+		print(x[1], end='')
+
+past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
+totalCards = resetTotalCards()
+lastRoundPrinted = False
+
+#test
+onLastPlayed([], ['´óÍõ', 'ºÚA'], 'test')
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
-past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 mem = captureMem()
-lastRoundPrinted = False
 while 1==1:
 	sleep(0.050)
 	mem = captureMem()
@@ -131,9 +156,9 @@ while 1==1:
 			lastRoundPrinted = True
 	else: lastRoundPrinted = False
 
-	if mem['ADD_MY_LEFT_CARDS_COUNT'] == 0: past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
+	if mem['ADD_MY_LEFT_CARDS_COUNT'] == 0:
+		past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
+		totalCards = resetTotalCards()
 
 CloseHandle(processHandle)
-
-
 
