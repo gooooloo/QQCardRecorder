@@ -99,45 +99,46 @@ def captureMem():
 
 	return ret
 
-thisRoundFinished = lambda ret: ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0
+roundFinished = lambda ret: ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0
 
 def onLastPlayed(totalList, lastPlayedList, label):
 	totalList.extend(lastPlayedList)
 	totalList.append('|')
 	for x in lastPlayedList: totalCards.remove(x)
 	print(label, lastPlayedList)
-	print(label, ''.join(totalList))
-	printTotalCards()
+	#print(label, ''.join(totalList))
 
 def resetTotalCards():
-	totalCards = []
+	ret = []
 	for x in PM[-2:]:
 		for i in range(0, 2) :
-			totalCards.append(x)
+			ret.append(x)
 	for hs in HS[-4:]:
 		for pm in PM[1: 14]:
 			for i in range(0, 2):
-				totalCards.append(''.join([hs,pm]))
-	return totalCards
+				ret.append(''.join([hs,pm]))
+	#printTotalCards(ret)
+	assert len(ret) == 108
+	return ret
 
-def printTotalCards():
+def printTotalCards(totalCards):
 	c = '0'
 	for x in totalCards:
 		if x[0] != c:
 			c = x[0]
-			print()
+			if c != '0': print()
 			print(c, end='')
 		print(x[1], end='')
+	print()
+
+def hasLastRound(mem): return mem['ADD_MY_LEFT_CARDS_COUNT'] < 25
+def hasNoRoundPlayed(mem): return not hasLastRound(mem)
 
 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 totalCards = resetTotalCards()
-lastRoundPrinted = False
-
-#test
-onLastPlayed([], ['大王', '黑A'], 'test')
+lastRoundHandled = False
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
-mem = captureMem()
 while 1==1:
 	sleep(0.050)
 	mem = captureMem()
@@ -146,19 +147,26 @@ while 1==1:
 	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_DJ_PLAYED_COUNT_LAST_ROUND']
 	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_SJ_PLAYED_COUNT_LAST_ROUND']
 
-	if thisRoundFinished(mem):
-		if not lastRoundPrinted:
-			onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
-			onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
-			onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
-			onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
-			print('-------')
-			lastRoundPrinted = True
-	else: lastRoundPrinted = False
+	myLeftCardsCount = mem['ADD_MY_LEFT_CARDS_COUNT']
 
-	if mem['ADD_MY_LEFT_CARDS_COUNT'] == 0:
+	if hasLastRound(mem):
+		if roundFinished(mem):
+			if not lastRoundHandled:
+				onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
+				onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
+				onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
+				onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
+				printTotalCards(totalCards)
+				print('-------')
+
+				lastRoundHandled = True
+
+		else: lastRoundHandled = False # we assume no another round played between 2 adjent mem-captures.
+	else: # then we reset
 		past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 		totalCards = resetTotalCards()
+		lastRoundHandled = False
+
 
 CloseHandle(processHandle)
 
