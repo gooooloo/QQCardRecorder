@@ -37,6 +37,16 @@ ADD_DJ_PLAYED_COUNT_THIS_ROUND = 0x004C78A0
 ADD_SJ_RECENT = 0x004C7276
 ADD_SJ_PLAYED_COUNT_THIS_ROUND = 0x004C7558
 
+ADD_MY_PLAYED_COUNT_LAST_ROUND = 0x004C7F30
+ADD_XJ_PLAYED_COUNT_LAST_ROUND = 0x004C8278
+ADD_DJ_PLAYED_COUNT_LAST_ROUND = 0x004C85C0
+ADD_SJ_PLAYED_COUNT_LAST_ROUND = 0x004C8908
+
+ADD_MY_LAST_ROUND = 0x004C7C4E
+ADD_XJ_LAST_ROUND = 0x004C8626
+ADD_DJ_LAST_ROUND = 0x004C82DE
+ADD_SJ_LAST_ROUND = 0x004C7F96
+
 
 pid = getPid(PROC_NAME)
 
@@ -60,40 +70,49 @@ readACardAsString = lambda address : ''.join([HS[readByteAsInt(address)], PM[rea
 def captureMem():
 	ret = {}
 	ret['ADD_MY_LEFT_CARDS_COUNT'] = readByteAsInt(ADD_MY_LEFT_CARDS_COUNT)
-	red['ADD_MY_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_MY_PLAYED_COUNT_THIS_ROUND)
-	red['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_XJ_PLAYED_COUNT_THIS_ROUND)
-	red['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_DJ_PLAYED_COUNT_THIS_ROUND)
-	red['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_SJ_PLAYED_COUNT_THIS_ROUND)
+
+	ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_MY_PLAYED_COUNT_THIS_ROUND)
+	ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_XJ_PLAYED_COUNT_THIS_ROUND)
+	ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_DJ_PLAYED_COUNT_THIS_ROUND)
+	ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_SJ_PLAYED_COUNT_THIS_ROUND)
 
 	ret['ADD_MY_RECENT'] = [readACardAsString(ADD_MY_RECENT + 0x8*i) for i in range(0, ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'])]
 	ret['ADD_XJ_RECENT'] = [readACardAsString(ADD_XJ_RECENT + 0x8*i) for i in range(0, ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'])]
 	ret['ADD_DJ_RECENT'] = [readACardAsString(ADD_DJ_RECENT + 0x8*i) for i in range(0, ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'])]
 	ret['ADD_SJ_RECENT'] = [readACardAsString(ADD_SJ_RECENT + 0x8*i) for i in range(0, ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'])]
+
+	ret['ADD_MY_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_MY_PLAYED_COUNT_LAST_ROUND)
+	ret['ADD_XJ_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_XJ_PLAYED_COUNT_LAST_ROUND)
+	ret['ADD_DJ_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_DJ_PLAYED_COUNT_LAST_ROUND)
+	ret['ADD_SJ_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_SJ_PLAYED_COUNT_LAST_ROUND)
+
+	ret['ADD_MY_LAST_ROUND'] = [readACardAsString(ADD_MY_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_MY_PLAYED_COUNT_LAST_ROUND'])]
+	ret['ADD_XJ_LAST_ROUND'] = [readACardAsString(ADD_XJ_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_XJ_PLAYED_COUNT_LAST_ROUND'])]
+	ret['ADD_DJ_LAST_ROUND'] = [readACardAsString(ADD_DJ_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_DJ_PLAYED_COUNT_LAST_ROUND'])]
+	ret['ADD_SJ_LAST_ROUND'] = [readACardAsString(ADD_SJ_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_SJ_PLAYED_COUNT_LAST_ROUND'])]
+
 	return ret
 
-#TODO: continue below contents.
+thisRoundFinished = lambda ret: ret['ADD_MY_RECENT'] == 0 && ret['ADD_XJ_RECENT'] == 0 && ret['ADD_DJ_RECENT'] == 0 && ret['ADD_SJ_RECENT'] == 0
+
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
-past = {'me':[], 'XiaJia':[], 'DuiJia':[], 'ShangJia':[]}
+past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 mem = captureMem()
 while 1==1:
 	sleep(0.050)
 	memOld = mem
 	mem = captureMem()
 
-	if mem['myCardsCnt'] == 25:
-		past = {'me':[], 'XiaJia':[], 'DuiJia':[], 'ShangJia':[]}
-		#print(mem['diPaiCards'])
+	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_XJ_PLAYED_COUNT_LAST_ROUND']
+	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_DJ_PLAYED_COUNT_LAST_ROUND']
+	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_SJ_PLAYED_COUNT_LAST_ROUND']
 
-	elif mem['myCardsCnt'] < memOld['myCardsCnt']: # means I played a card out
-		past['me'].append((mem['lr_me']))
-		past['XiaJia'].append((mem['lr_XiaJia']))
-		past['DuiJia'].append((mem['lr_DuiJia']))
-		past['ShangJia'].append((mem['lr_ShangJia']))
-
-		print('1 round')
-		if mem['myCardsCnt'] == 0: print(past)
-
-
+	if thisRoundFinished(mem):
+		print(['ADD_MY_LAST_ROUND'])
+		print(['ADD_XJ_LAST_ROUND'])
+		print(['ADD_DJ_LAST_ROUND'])
+		print(['ADD_SJ_LAST_ROUND'])
+		print('-------')
 
 CloseHandle(processHandle)
 
