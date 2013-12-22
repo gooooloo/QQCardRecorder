@@ -101,6 +101,14 @@ def captureMem():
 
 thisRoundFinished = lambda ret: ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0
 
+def onLastPlayed(totalList, lastPlayedList, label):
+	totalList.extend(lastPlayedList)
+	totalList.append('|')
+	print(label, lastPlayedList)
+	print(label, ''.join(totalList))
+
+
+
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 mem = captureMem()
@@ -115,13 +123,15 @@ while 1==1:
 
 	if thisRoundFinished(mem):
 		if not lastRoundPrinted:
-			print(mem['ADD_MY_LAST_ROUND'])
-			print(mem['ADD_XJ_LAST_ROUND'])
-			print(mem['ADD_DJ_LAST_ROUND'])
-			print(mem['ADD_SJ_LAST_ROUND'])
+			onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
+			onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
+			onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
+			onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
 			print('-------')
 			lastRoundPrinted = True
 	else: lastRoundPrinted = False
+
+	if mem['ADD_MY_LEFT_CARDS_COUNT'] == 0: past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 
 CloseHandle(processHandle)
 
