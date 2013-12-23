@@ -29,28 +29,27 @@ CloseHandle = windll.kernel32.CloseHandle
 PROC_NAME = 'NewsjRpg.exe'
 PROCESS_ALL_ACCESS = 0x1F0FFF
 
-ADD_MY_LEFT_CARDS_COUNT = 0x004ca000
-ADD_MY_RECENT = 0x004C896E
-ADD_MY_PLAYED_COUNT_THIS_ROUND = 0x004C8C50
-ADD_XJ_RECENT = 0x004C7906
-ADD_XJ_PLAYED_COUNT_THIS_ROUND = 0x004C7BE8
-ADD_DJ_RECENT = 0x004C75BE
-ADD_DJ_PLAYED_COUNT_THIS_ROUND = 0x004C78A0
-ADD_SJ_RECENT = 0x004C7276
-ADD_SJ_PLAYED_COUNT_THIS_ROUND = 0x004C7558
-
-ADD_MY_PLAYED_COUNT_LAST_ROUND = 0x004C7F30
-ADD_XJ_PLAYED_COUNT_LAST_ROUND = 0x004C8278
-ADD_DJ_PLAYED_COUNT_LAST_ROUND = 0x004C85C0
-ADD_SJ_PLAYED_COUNT_LAST_ROUND = 0x004C8908
-
-ADD_MY_LAST_ROUND = 0x004C7C4E
-ADD_XJ_LAST_ROUND = 0x004C8626
-ADD_DJ_LAST_ROUND = 0x004C82DE
-ADD_SJ_LAST_ROUND = 0x004C7F96
-
-ADD_ZP_PM = 0x004C6E20
-ADD_ZP_HS = 0x004c6E38
+ADD=[
+	('ADD_MY_LEFT_CARDS_COUNT', 0x004ca000),
+	('ADD_MY_PLAYED_COUNT_THIS_ROUND', 0x004C8C50),
+	('ADD_XJ_PLAYED_COUNT_THIS_ROUND', 0x004C7BE8),
+	('ADD_DJ_PLAYED_COUNT_THIS_ROUND', 0x004C78A0),
+	('ADD_SJ_PLAYED_COUNT_THIS_ROUND', 0x004C7558),
+	('ADD_MY_RECENT', 0x004C896E, 'ADD_MY_PLAYED_COUNT_THIS_ROUND'),
+	('ADD_XJ_RECENT', 0x004C7906, 'ADD_XJ_PLAYED_COUNT_THIS_ROUND'),
+	('ADD_DJ_RECENT', 0x004C75BE, 'ADD_DJ_PLAYED_COUNT_THIS_ROUND'),
+	('ADD_SJ_RECENT', 0x004C7276, 'ADD_SJ_PLAYED_COUNT_THIS_ROUND'),
+	('ADD_MY_PLAYED_COUNT_LAST_ROUND', 0x004C7F30),
+	('ADD_XJ_PLAYED_COUNT_LAST_ROUND', 0x004C8278),
+	('ADD_DJ_PLAYED_COUNT_LAST_ROUND', 0x004C85C0),
+	('ADD_SJ_PLAYED_COUNT_LAST_ROUND', 0x004C8908),
+	('ADD_MY_LAST_ROUND', 0x004C7C4E, 'ADD_MY_PLAYED_COUNT_LAST_ROUND'),
+	('ADD_XJ_LAST_ROUND', 0x004C8626, 'ADD_XJ_PLAYED_COUNT_LAST_ROUND'),
+	('ADD_DJ_LAST_ROUND', 0x004C82DE, 'ADD_DJ_PLAYED_COUNT_LAST_ROUND'),
+	('ADD_SJ_LAST_ROUND', 0x004C7F96, 'ADD_SJ_PLAYED_COUNT_LAST_ROUND'),
+	('ADD_ZP_PM', 0x004C6E20),
+	('ADD_ZP_HS', 0x004c6E38)
+]
 
 
 pid = getPid(PROC_NAME)
@@ -76,30 +75,12 @@ readACardAsString = lambda address : ''.join([HS[readByteAsInt(address)], PM[rea
 def captureMem():
 	ret = {}
 
-	ret['ADD_ZP_PM'] = readByteAsInt(ADD_ZP_PM)
-	ret['ADD_ZP_HS'] = readByteAsInt(ADD_ZP_HS)
-
-	ret['ADD_MY_LEFT_CARDS_COUNT'] = readByteAsInt(ADD_MY_LEFT_CARDS_COUNT)
-
-	ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_MY_PLAYED_COUNT_THIS_ROUND)
-	ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_XJ_PLAYED_COUNT_THIS_ROUND)
-	ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_DJ_PLAYED_COUNT_THIS_ROUND)
-	ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_SJ_PLAYED_COUNT_THIS_ROUND)
-
-	ret['ADD_MY_RECENT'] = [readACardAsString(ADD_MY_RECENT + 0x8*i) for i in range(0, ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'])]
-	ret['ADD_XJ_RECENT'] = [readACardAsString(ADD_XJ_RECENT + 0x8*i) for i in range(0, ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'])]
-	ret['ADD_DJ_RECENT'] = [readACardAsString(ADD_DJ_RECENT + 0x8*i) for i in range(0, ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'])]
-	ret['ADD_SJ_RECENT'] = [readACardAsString(ADD_SJ_RECENT + 0x8*i) for i in range(0, ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'])]
-
-	ret['ADD_MY_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_MY_PLAYED_COUNT_LAST_ROUND)
-	ret['ADD_XJ_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_XJ_PLAYED_COUNT_LAST_ROUND)
-	ret['ADD_DJ_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_DJ_PLAYED_COUNT_LAST_ROUND)
-	ret['ADD_SJ_PLAYED_COUNT_LAST_ROUND'] = readByteAsInt(ADD_SJ_PLAYED_COUNT_LAST_ROUND)
-
-	ret['ADD_MY_LAST_ROUND'] = [readACardAsString(ADD_MY_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_MY_PLAYED_COUNT_LAST_ROUND'])]
-	ret['ADD_XJ_LAST_ROUND'] = [readACardAsString(ADD_XJ_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_XJ_PLAYED_COUNT_LAST_ROUND'])]
-	ret['ADD_DJ_LAST_ROUND'] = [readACardAsString(ADD_DJ_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_DJ_PLAYED_COUNT_LAST_ROUND'])]
-	ret['ADD_SJ_LAST_ROUND'] = [readACardAsString(ADD_SJ_LAST_ROUND + 0x8*i) for i in range(0, ret['ADD_SJ_PLAYED_COUNT_LAST_ROUND'])]
+	for add in ADD:
+		if len(add) == 2:
+			ret[add[0]] = readByteAsInt(add[1])
+		else:
+			assert len(add) == 3
+			ret[add[0]] = [readACardAsString(add[1] + 0x8*i) for i in range(0, ret[add[2]])]
 
 	return ret
 
@@ -110,7 +91,9 @@ def onLastPlayed(totalList, lastPlayedList, label):
 	totalList.append('|')
 	for x in lastPlayedList:
 		for y in totalCards:
-			y.remove(x)
+			try:
+				totalCards[y].remove(x)
+			except: pass
 	print(label, lastPlayedList)
 	#print(label, ''.join(totalList))
 
@@ -128,7 +111,7 @@ def resetTotalCards():
 			ret[hs].append(''.join([hs,PM[1]]))
 			ret[hs].append(''.join([hs,PM[1]]))
 
-	printTotalCards(ret)
+	#printTotalCards(ret)
 
 	totallen = 0
 	for x in ret:
