@@ -14,20 +14,18 @@ SXD - ShuiXianDa (该轮谁先打的，我还是下家还是对家上家)
 ZP - ZhuPai (主牌)
 '''
 
-def getPid(proc_name):
-	for proc in psutil.process_iter():
-		try:
-			if proc.name == proc_name:
-				return proc.pid
-		except (psutil.AccessDenied) as e:
-			ignoreExceptionBecauseOfPsUtilBug =("psutil.AccessDenied")
 
+######### const variant definitions
 OpenProcess = windll.kernel32.OpenProcess
 ReadProcessMemory = windll.kernel32.ReadProcessMemory
 CloseHandle = windll.kernel32.CloseHandle
 
 PROC_NAME = 'NewsjRpg.exe'
 PROCESS_ALL_ACCESS = 0x1F0FFF
+
+HS = [ '', '黑', '红', '花', '方' ] # the index matches with its int value in memory
+PM = [ '出错了', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '十', 'J', 'Q', 'K', '小王', '大王' ] # the index matches with its int value in memory
+SXD = ['出错了', '我先出牌', '下家先出牌', '对家先出牌', '上家先出牌' ] # the index matches with its int value in memory
 
 ADD=[
 	('ADD_MY_LEFT_CARDS_COUNT', 0x004ca000),
@@ -52,11 +50,16 @@ ADD=[
 ]
 
 
-pid = getPid(PROC_NAME)
+##################### block of memory reading codes
+def getPid(proc_name):
+	for proc in psutil.process_iter():
+		try:
+			if proc.name == proc_name:
+				return proc.pid
+		except (psutil.AccessDenied) as e:
+			ignoreExceptionBecauseOfPsUtilBug =("psutil.AccessDenied")
 
-HS = [ '', '黑', '红', '花', '方' ] # the index matches with its int value in memory
-PM = [ '出错了', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '十', 'J', 'Q', 'K', '小王', '大王' ] # the index matches with its int value in memory
-SXD = ['出错了', '我先出牌', '下家先出牌', '对家先出牌', '上家先出牌' ] # the index matches with its int value in memory
+pid = getPid(PROC_NAME)
 
 buffer = c_char_p(b"The data goes here")
 cval = c_char()
@@ -84,7 +87,9 @@ def captureMem():
 
 	return ret
 
-roundFinished = lambda ret: ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0
+
+#################### game analysis codes block:
+roundFinished = lambda mem: mem['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0
 
 def onLastPlayed(totalList, lastPlayedList, label):
 	totalList.extend(lastPlayedList)
@@ -97,6 +102,45 @@ def onLastPlayed(totalList, lastPlayedList, label):
 	print(label, lastPlayedList)
 	#print(label, ''.join(totalList))
 
+def hasLastRound(mem): return mem['ADD_MY_LEFT_CARDS_COUNT'] < 25
+
+def analyzeWhoPlayedFirstThisRound(mem):
+	if (mem['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0):
+		if (mem['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 2
+		if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 3
+		return 4
+	else:
+		if (mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 1
+		if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 4
+		return 3
+	assert False; # not supposed to be here.
+
+def handleLastRound(mem):
+	onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
+	onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
+	onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
+	onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
+
+
+################### block of printing functions
+def printBasedOnLastRound(mem):
+	print(whoPlayedFirstThisRound)
+	printTotalCards(totalCards)
+	print('-------')
+
+def printTotalCards(totalCards):
+	for x in totalCards:
+		print(x,end=':')
+		for y in totalCards[x]:
+			if x != '':
+				print(y[1], end='')
+			else:
+				print(y, end='')
+		print()
+	print()
+
+
+################### initialize
 def resetTotalCards():
 	ret = {}
 
@@ -111,44 +155,19 @@ def resetTotalCards():
 			ret[hs].append(''.join([hs,PM[1]]))
 			ret[hs].append(''.join([hs,PM[1]]))
 
-	#printTotalCards(ret)
-
 	totallen = 0
 	for x in ret:
 		totallen += len(ret[x])
 	assert totallen == 108
+
 	return ret
-
-def printTotalCards(totalCards):
-	for x in totalCards:
-		print(x,end=':')
-		for y in totalCards[x]:
-			if x != '':
-				print(y[1], end='')
-			else:
-				print(y, end='')
-		print()
-	print()
-
-def hasLastRound(mem): return mem['ADD_MY_LEFT_CARDS_COUNT'] < 25
-def hasNoRoundPlayed(mem): return not hasLastRound(mem)
-
-def analyzeWhoPlayedFirstThisRound(mem):
-	if (mem['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0):
-		if (mem['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 2
-		if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 3
-		return 4
-	else:
-		if (mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 1
-		if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 4
-		return 3
-	assert False; # not supposed to be here.
 
 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 totalCards = resetTotalCards()
 lastRoundHandled = False
 whoPlayedFirstThisRound = 'none' # see SXD
 
+##################### we start to read data from game and handle now.
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
 while 1==1:
 	sleep(0.050)
@@ -158,18 +177,11 @@ while 1==1:
 	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_DJ_PLAYED_COUNT_LAST_ROUND']
 	assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_SJ_PLAYED_COUNT_LAST_ROUND']
 
-	myLeftCardsCount = mem['ADD_MY_LEFT_CARDS_COUNT']
-
 	if hasLastRound(mem):
 		if roundFinished(mem):
 			if not lastRoundHandled:
-				print(whoPlayedFirstThisRound)
-				onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
-				onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
-				onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
-				onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
-				printTotalCards(totalCards)
-				print('-------')
+				handleLastRound(mem)
+				printBasedOnLastRound(mem)
 
 				whoPlayedFirstThisRound = 'none'
 				lastRoundHandled = True
