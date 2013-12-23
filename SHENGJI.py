@@ -75,6 +75,10 @@ readACardAsString = lambda address : ''.join([HS[readByteAsInt(address)], PM[rea
 
 def captureMem():
 	ret = {}
+
+	ret['ADD_ZP_PM'] = readByteAsInt(ADD_ZP_PM)
+	ret['ADD_ZP_HS'] = readByteAsInt(ADD_ZP_HS)
+
 	ret['ADD_MY_LEFT_CARDS_COUNT'] = readByteAsInt(ADD_MY_LEFT_CARDS_COUNT)
 
 	ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] = readByteAsInt(ADD_MY_PLAYED_COUNT_THIS_ROUND)
@@ -104,31 +108,43 @@ roundFinished = lambda ret: ret['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and ret['
 def onLastPlayed(totalList, lastPlayedList, label):
 	totalList.extend(lastPlayedList)
 	totalList.append('|')
-	for x in lastPlayedList: totalCards.remove(x)
+	for x in lastPlayedList:
+		for y in totalCards:
+			y.remove(x)
 	print(label, lastPlayedList)
 	#print(label, ''.join(totalList))
 
 def resetTotalCards():
-	ret = []
-	for x in PM[-2:]:
-		for i in range(0, 2) :
-			ret.append(x)
-	for hs in HS[-4:]:
-		for pm in PM[1: 14]:
-			for i in range(0, 2):
-				ret.append(''.join([hs,pm]))
-	#printTotalCards(ret)
-	assert len(ret) == 108
+	ret = {}
+
+	for hs in HS:
+		ret[hs] = []
+		if hs == '':
+			ret[hs].extend([PM[-1],PM[-1],PM[-2],PM[-2]])
+		else:
+			for pm in PM[2: 14]:
+				ret[hs].append(''.join([hs,pm]))
+				ret[hs].append(''.join([hs,pm]))
+			ret[hs].append(''.join([hs,PM[1]]))
+			ret[hs].append(''.join([hs,PM[1]]))
+
+	printTotalCards(ret)
+
+	totallen = 0
+	for x in ret:
+		totallen += len(ret[x])
+	assert totallen == 108
 	return ret
 
 def printTotalCards(totalCards):
-	c = '0'
 	for x in totalCards:
-		if x[0] != c:
-			c = x[0]
-			if c != '0': print()
-			print(c, end='')
-		print(x[1], end='')
+		print(x,end=':')
+		for y in totalCards[x]:
+			if x != '':
+				print(y[1], end='')
+			else:
+				print(y, end='')
+		print()
 	print()
 
 def hasLastRound(mem): return mem['ADD_MY_LEFT_CARDS_COUNT'] < 25
@@ -165,7 +181,6 @@ while 1==1:
 		if roundFinished(mem):
 			if not lastRoundHandled:
 				print(whoPlayedFirstThisRound)
-				whoPlayedFirstThisRound = 'none'
 				onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
 				onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
 				onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
@@ -173,6 +188,7 @@ while 1==1:
 				printTotalCards(totalCards)
 				print('-------')
 
+				whoPlayedFirstThisRound = 'none'
 				lastRoundHandled = True
 
 		else:
