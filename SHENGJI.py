@@ -134,9 +134,21 @@ def printTotalCards(totalCards):
 def hasLastRound(mem): return mem['ADD_MY_LEFT_CARDS_COUNT'] < 25
 def hasNoRoundPlayed(mem): return not hasLastRound(mem)
 
+def analyzeWhoPlayedFirstThisRound(mem):
+	if (mem['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0):
+		if (mem['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 2
+		if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 3
+		return 4
+	else:
+		if (mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 1
+		if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 4
+		return 3
+	assert False; # not supposed to be here.
+
 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 totalCards = resetTotalCards()
 lastRoundHandled = False
+whoPlayedFirstThisRound = 'none' # see SXD
 
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
 while 1==1:
@@ -152,6 +164,8 @@ while 1==1:
 	if hasLastRound(mem):
 		if roundFinished(mem):
 			if not lastRoundHandled:
+				print(whoPlayedFirstThisRound)
+				whoPlayedFirstThisRound = 'none'
 				onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
 				onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
 				onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
@@ -161,11 +175,16 @@ while 1==1:
 
 				lastRoundHandled = True
 
-		else: lastRoundHandled = False # we assume no another round played between 2 adjent mem-captures.
+		else:
+			lastRoundHandled = False # we assume no another round played between 2 adjent mem-captures.
+			if whoPlayedFirstThisRound == 'none':
+				whoPlayedFirstThisRound = SXD[analyzeWhoPlayedFirstThisRound(mem)]
+
 	else: # then we reset
 		past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 		totalCards = resetTotalCards()
 		lastRoundHandled = False
+		whoPlayedFirstThisRound = 'none'
 
 
 CloseHandle(processHandle)
