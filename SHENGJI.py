@@ -121,6 +121,10 @@ def handleLastRound(mem):
         onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
         onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
 
+def getCatogoryFromTotalCards(totalCards, p):
+        for x in totalCards:
+                if p in totalCards[x]:
+                        return x
 
 ################### block of printing functions
 def printBasedOnLastRound(mem, zppm):
@@ -174,7 +178,6 @@ def resetTotalCards(zphs, zppm):
                 ret[HS[0]].append(''.join([zphs, zppm]))
         ret[HS[0]].extend([PM[-2],PM[-2],PM[-1],PM[-1]])
         
-        printTotalCards(ret, zppm)
         totallen = 0
         for x in ret:
                 totallen += len(ret[x])
@@ -188,15 +191,25 @@ lastRoundHandled = False
 whoPlayedFirstThisRound = 'none' # see SXD
 
 ##################### test codes
-if 1==1:
+testing = 1==1
+if testing:
         x = resetTotalCards('主', 'A')
         printTotalCards(x, 'A')
-
+        assert getCatogoryFromTotalCards(x, '大王') == '主'
+        assert getCatogoryFromTotalCards(x, '方A') == '主'
+        assert getCatogoryFromTotalCards(x, '方K') == '方'
+        x = resetTotalCards('方', 'A')
+        printTotalCards(x, 'A')
+        assert getCatogoryFromTotalCards(x, '大王') == '主'
+        assert getCatogoryFromTotalCards(x, '方A') == '主'
+        assert getCatogoryFromTotalCards(x, '红A') == '主'
+        assert getCatogoryFromTotalCards(x, '方K') == '主'
+        assert getCatogoryFromTotalCards(x, '黑K') == '黑'
 
 
 ##################### we start to read data from game and handle now.
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
-while 1==1:
+while 1==1 and not testing:
         sleep(0.050)
         mem = captureMem()
 
