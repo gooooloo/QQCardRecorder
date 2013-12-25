@@ -123,16 +123,18 @@ def handleLastRound(mem):
 
 
 ################### block of printing functions
-def printBasedOnLastRound(mem):
+def printBasedOnLastRound(mem, zppm):
         print(whoPlayedFirstThisRound)
-        printTotalCards(totalCards)
+        printTotalCards(totalCards, zppm)
         print('-------')
 
-def printTotalCards(totalCards):
+def printTotalCards(totalCards, zppm):
         for x in totalCards:
                 print(x,end=':')
                 for y in totalCards[x]:
                         if x != HS[0]:
+                                print(y[1], end='')
+                        elif y[1] in PM[1:14] and y[1] != zppm:
                                 print(y[1], end='')
                         else:
                                 print(y, end='')
@@ -172,7 +174,7 @@ def resetTotalCards(zphs, zppm):
                 else:
                         ret[hs] = x
 
-        printTotalCards(ret)
+        printTotalCards(ret, zppm)
         totallen = 0
         for x in ret:
                 totallen += len(ret[x])
@@ -188,7 +190,7 @@ whoPlayedFirstThisRound = 'none' # see SXD
 ##################### test codes
 if 1==1:
         x = resetTotalCards('ºÚ', '3')
-        printTotalCards(x)
+        printTotalCards(x, '3')
 
 
 
@@ -208,7 +210,7 @@ while 1==1:
                 if roundFinished(mem):
                         if not lastRoundHandled:
                                 handleLastRound(mem)
-                                printBasedOnLastRound(mem)
+                                printBasedOnLastRound(mem, PM[mem['ADD_ZP_PM']])
 
                                 whoPlayedFirstThisRound = 'none'
                                 lastRoundHandled = True
