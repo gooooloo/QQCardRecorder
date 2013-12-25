@@ -137,7 +137,7 @@ def printTotalCards(totalCards, zppm):
                         elif y[1] in PM[1:14] and y[1] != zppm:
                                 print(y[1], end='')
                         else:
-                                print(y, end='')
+                                print(' '+y, end='')
                 print()
         print()
 
@@ -150,15 +150,6 @@ def resetTotalCards(zphs, zppm):
         ret = {}
 
         ret[HS[0]] = []
-        ret[HS[0]].extend([PM[-1],PM[-1],PM[-2],PM[-2]])
-        if zphs != HS[0]:
-                ret[HS[0]].append(''.join([zphs, zppm]))
-                ret[HS[0]].append(''.join([zphs, zppm]))
-        for hs in HS[-4:]:
-                if hs != zphs:
-                        ret[HS[0]].append(''.join([hs, zppm]))
-                        ret[HS[0]].append(''.join([hs, zppm]))
-
         for hs in HS[-4:]:
                 y = PM[2: 14]
                 y.append(PM[1])
@@ -174,6 +165,15 @@ def resetTotalCards(zphs, zppm):
                 else:
                         ret[hs] = x
 
+        for hs in HS[-4:]:
+                if hs != zphs:
+                        ret[HS[0]].append(''.join([hs, zppm]))
+                        ret[HS[0]].append(''.join([hs, zppm]))
+        if zphs != HS[0]:
+                ret[HS[0]].append(''.join([zphs, zppm]))
+                ret[HS[0]].append(''.join([zphs, zppm]))
+        ret[HS[0]].extend([PM[-2],PM[-2],PM[-1],PM[-1]])
+        
         printTotalCards(ret, zppm)
         totallen = 0
         for x in ret:
@@ -189,8 +189,8 @@ whoPlayedFirstThisRound = 'none' # see SXD
 
 ##################### test codes
 if 1==1:
-        x = resetTotalCards('ºÚ', '3')
-        printTotalCards(x, '3')
+        x = resetTotalCards('Ö÷', 'A')
+        printTotalCards(x, 'A')
 
 
 
