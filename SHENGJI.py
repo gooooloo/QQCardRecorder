@@ -23,7 +23,7 @@ CloseHandle = windll.kernel32.CloseHandle
 PROC_NAME = 'NewsjRpg.exe'
 PROCESS_ALL_ACCESS = 0x1F0FFF
 
-HS = [ '', '黑', '红', '花', '方' ] # the index matches with its int value in memory
+HS = [ '主', '黑', '红', '花', '方' ] # the index matches with its int value in memory
 PM = [ '出错了', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '十', 'J', 'Q', 'K', '小王', '大王' ] # the index matches with its int value in memory
 SXD = ['出错了', '我先出牌', '下家先出牌', '对家先出牌', '上家先出牌' ] # the index matches with its int value in memory
 
@@ -132,7 +132,7 @@ def printTotalCards(totalCards):
         for x in totalCards:
                 print(x,end=':')
                 for y in totalCards[x]:
-                        if x != '':
+                        if x != HS[0]:
                                 print(y[1], end='')
                         else:
                                 print(y, end='')
@@ -141,20 +141,38 @@ def printTotalCards(totalCards):
 
 
 ################### initialize
-def resetTotalCards():
+def resetTotalCards(zphs, zppm):
+        assert zphs in HS
+        assert zppm in PM[1:13]
+
         ret = {}
 
-        for hs in HS:
-                ret[hs] = []
-                if hs == '':
-                        ret[hs].extend([PM[-1],PM[-1],PM[-2],PM[-2]])
-                else:
-                        for pm in PM[2: 14]:
-                                ret[hs].append(''.join([hs,pm]))
-                                ret[hs].append(''.join([hs,pm]))
-                        ret[hs].append(''.join([hs,PM[1]]))
-                        ret[hs].append(''.join([hs,PM[1]]))
+        ret[HS[0]] = []
+        ret[HS[0]].extend([PM[-1],PM[-1],PM[-2],PM[-2]])
+        if zphs != HS[0]:
+                ret[HS[0]].append(''.join([zphs, zppm]))
+                ret[HS[0]].append(''.join([zphs, zppm]))
+        for hs in HS[-4:]:
+                if hs == zphs: pass
+                ret[HS[0]].append(''.join([hs, zppm]))
+                ret[HS[0]].append(''.join([hs, zppm]))
 
+        for hs in HS[-4:]:
+                y = PM[2: 14]
+                y.append(PM[1])
+                y.remove(zppm)
+
+                x = []
+                for pm in y:
+                        x.append(''.join([hs,pm]))
+                        x.append(''.join([hs,pm]))
+
+                if hs == zphs:
+                        ret[[HS[0]]].extend(x)
+                else:
+                        ret[hs] = x
+
+        print(ret)
         totallen = 0
         for x in ret:
                 totallen += len(ret[x])
@@ -163,7 +181,7 @@ def resetTotalCards():
         return ret
 
 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
-totalCards = resetTotalCards()
+totalCards = {}
 lastRoundHandled = False
 whoPlayedFirstThisRound = 'none' # see SXD
 
@@ -178,6 +196,8 @@ while 1==1:
         assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_SJ_PLAYED_COUNT_LAST_ROUND']
 
         if hasLastRound(mem):
+                if totalCards == {}:
+                        totalCards = resetTotalCards(HS[mem['ADD_ZP_HS']], PM[mem['ADD_ZP_PM']])
                 if roundFinished(mem):
                         if not lastRoundHandled:
                                 handleLastRound(mem)
@@ -193,7 +213,7 @@ while 1==1:
 
         else: # then we reset
                 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
-                totalCards = resetTotalCards()
+                totalCards = {}
                 lastRoundHandled = False
                 whoPlayedFirstThisRound = 'none'
 
