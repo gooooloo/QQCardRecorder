@@ -153,9 +153,9 @@ def resetTotalCards(zphs, zppm):
                 ret[HS[0]].append(''.join([zphs, zppm]))
                 ret[HS[0]].append(''.join([zphs, zppm]))
         for hs in HS[-4:]:
-                if hs == zphs: pass
-                ret[HS[0]].append(''.join([hs, zppm]))
-                ret[HS[0]].append(''.join([hs, zppm]))
+                if hs != zphs:
+                        ret[HS[0]].append(''.join([hs, zppm]))
+                        ret[HS[0]].append(''.join([hs, zppm]))
 
         for hs in HS[-4:]:
                 y = PM[2: 14]
@@ -168,11 +168,11 @@ def resetTotalCards(zphs, zppm):
                         x.append(''.join([hs,pm]))
 
                 if hs == zphs:
-                        ret[[HS[0]]].extend(x)
+                        ret[HS[0]].extend(x)
                 else:
                         ret[hs] = x
 
-        print(ret)
+        printTotalCards(ret)
         totallen = 0
         for x in ret:
                 totallen += len(ret[x])
@@ -184,6 +184,13 @@ past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
 totalCards = {}
 lastRoundHandled = False
 whoPlayedFirstThisRound = 'none' # see SXD
+
+##################### test codes
+if 1==1:
+        x = resetTotalCards('ºÚ', '3')
+        printTotalCards(x)
+
+
 
 ##################### we start to read data from game and handle now.
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
