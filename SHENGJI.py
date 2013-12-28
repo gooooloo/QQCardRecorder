@@ -191,7 +191,7 @@ lastRoundHandled = False
 whoPlayedFirstThisRound = 'none' # see SXD
 
 ##################### test codes
-testing = 1==1
+testing = 1==0
 if testing:
         x = resetTotalCards('Ö÷', 'A')
         printTotalCards(x, 'A')
