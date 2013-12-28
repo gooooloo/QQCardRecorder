@@ -5,13 +5,12 @@ from time import sleep
 import psutil
 
 ''' Vacabularies:
-XJ - XiaJia (下家)
-DJ - DuiJia (对家)
-SJ - ShangJia (上家)
 HS - HuaSe (花色，如黑桃，方块等等)
 PM - PM (牌面，如A，2，3，J，Q，大王等等)
-SXD - ShuiXianDa (该轮谁先打的，我还是下家还是对家上家)
 ZP - ZhuPai (主牌)
+XS - XuanShou (选手)
+SYL - ShangYiLun (上一轮)
+SXD - ShuiXianDa (谁先打)
 '''
 
 
@@ -24,30 +23,35 @@ PROC_NAME = 'NewsjRpg.exe'
 PROCESS_ALL_ACCESS = 0x1F0FFF
 
 HS = [ '主', '黑', '红', '梅', '方' ] # the index matches with its int value in memory
-PM = [ '出错了', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '十', 'J', 'Q', 'K', '小王', '大王' ] # the index matches with its int value in memory
-SXD = ['出错了', '我先出牌', '下家先出牌', '对家先出牌', '上家先出牌' ] # the index matches with its int value in memory
+PM = { 1:'A', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9', 10:'十', 11:'J', 12:'Q', 13:'K', 14:'小王', 15:'大王' }
+XS = {1:'本家', 2:'下家', 3:'对家', 4:'上家' }
 
 ADD=[
-        ('ADD_MY_LEFT_CARDS_COUNT', 0x004ca000),
-        ('ADD_MY_PLAYED_COUNT_THIS_ROUND', 0x004C8C50),
-        ('ADD_XJ_PLAYED_COUNT_THIS_ROUND', 0x004C7BE8),
-        ('ADD_DJ_PLAYED_COUNT_THIS_ROUND', 0x004C78A0),
-        ('ADD_SJ_PLAYED_COUNT_THIS_ROUND', 0x004C7558),
-        ('ADD_MY_RECENT', 0x004C896E, 'ADD_MY_PLAYED_COUNT_THIS_ROUND'),
-        ('ADD_XJ_RECENT', 0x004C7906, 'ADD_XJ_PLAYED_COUNT_THIS_ROUND'),
-        ('ADD_DJ_RECENT', 0x004C75BE, 'ADD_DJ_PLAYED_COUNT_THIS_ROUND'),
-        ('ADD_SJ_RECENT', 0x004C7276, 'ADD_SJ_PLAYED_COUNT_THIS_ROUND'),
-        ('ADD_MY_PLAYED_COUNT_LAST_ROUND', 0x004C7F30),
-        ('ADD_XJ_PLAYED_COUNT_LAST_ROUND', 0x004C8278),
-        ('ADD_DJ_PLAYED_COUNT_LAST_ROUND', 0x004C85C0),
-        ('ADD_SJ_PLAYED_COUNT_LAST_ROUND', 0x004C8908),
-        ('ADD_MY_LAST_ROUND', 0x004C7C4E, 'ADD_MY_PLAYED_COUNT_LAST_ROUND'),
-        ('ADD_XJ_LAST_ROUND', 0x004C8626, 'ADD_XJ_PLAYED_COUNT_LAST_ROUND'),
-        ('ADD_DJ_LAST_ROUND', 0x004C82DE, 'ADD_DJ_PLAYED_COUNT_LAST_ROUND'),
-        ('ADD_SJ_LAST_ROUND', 0x004C7F96, 'ADD_SJ_PLAYED_COUNT_LAST_ROUND'),
-        ('ADD_ZP_PM', 0x004C6E20),
-        ('ADD_ZP_HS', 0x004c6E38)
+        ('LEFT_CARDS_COUNT', XS[1], 0x004ca000),
+        ('PLAYED_COUNT_THIS_ROUND', XS[1], 0x004C8C50),
+        ('PLAYED_COUNT_THIS_ROUND', XS[2], 0x004C7BE8),
+        ('PLAYED_COUNT_THIS_ROUND', XS[3], 0x004C78A0),
+        ('PLAYED_COUNT_THIS_ROUND', XS[4], 0x004C7558),
+        ('RECENT', XS[1], 0x004C896E),
+        ('RECENT', XS[2], 0x004C7906),
+        ('RECENT', XS[3], 0x004C75BE),
+        ('RECENT', XS[4], 0x004C7276),
+        ('PLAYED_COUNT_SYL', XS[1], 0x004C7F30),
+        ('PLAYED_COUNT_SYL', XS[2], 0x004C8278),
+        ('PLAYED_COUNT_SYL', XS[3], 0x004C85C0),
+        ('PLAYED_COUNT_SYL', XS[4], 0x004C8908),
+        ('SYL', XS[1], 0x004C7C4E),
+        ('SYL', XS[2], 0x004C8626),
+        ('SYL', XS[3], 0x004C82DE),
+        ('SYL', XS[4], 0x004C7F96),
+        ('ZP', 'PM', 0x004C6E20),
+        ('ZP', 'HS', 0x004c6E38)
 ]
+
+ADD_DEPENDENCY={
+        'RECENT', 'PLAYED_COUNT_THIS_ROUND',
+        'SYL', 'PLAYED_COUNT_SYL'
+}
 
 
 ##################### block of memory reading codes
@@ -79,51 +83,57 @@ def captureMem():
         ret = {}
 
         for add in ADD:
-                if len(add) == 2:
-                        ret[add[0]] = readByteAsInt(add[1])
-                else:
-                        assert len(add) == 3
-                        ret[add[0]] = [readACardAsString(add[1] + 0x8*i) for i in range(0, ret[add[2]])]
+                assert len(add) == 3
+                if add[0] not in ADD_DEPENDENCY:
+                        ret[add[0]] = {}
+                        ret[add[0]][add[1]] = readByteAsInt(add[2])
+        for add in ADD:
+                if add[0] in ADD_DEPENDENCY:
+                        ret[add[0]][add[1]] = [readACardAsString(add[2] + 0x8*i) for i in range(0, ret[ADD_DEPENDENCY[add[0]]][add[1]])]
 
         return ret
 
 
 #################### game analysis codes block:
-roundFinished = lambda mem: mem['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0
 
-def onLastPlayed(totalList, lastPlayedList, label):
-        totalList.extend(lastPlayedList)
-        totalList.append('|')
-        for x in lastPlayedList:
-                for y in totalCards:
-                        try:
-                                totalCards[y].remove(x)
-                        except: pass
-        print(label, lastPlayedList)
-        #print(label, ''.join(totalList))
+anal = {}
 
-def hasLastRound(mem): return mem['ADD_MY_LEFT_CARDS_COUNT'] < 25
+def resetAnal():
+        anal = {}
+        anal['cards'] = resetTotalCards()
+        anal['backupCards'] = resetTotalCards()
 
-def analyzeWhoPlayedFirstThisRound(mem):
-        if (mem['ADD_MY_PLAYED_COUNT_THIS_ROUND'] == 0):
-                if (mem['ADD_XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 2
-                if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 3
+def analFromMen():
+        anal['roundFinished'] = analRoundFinished()
+        anal['hasLastRound'] = (mem['LEFT_CARDS_COUNT'][XS[1]] < 25)
+        anal['sylSxd'] = analSxd()
+        for xs in XS:
+                anal['history'][xs].extend(mem['SYL'][xs])
+                anal['history'][xs].append('|')
+        anal['lastRoundCatogory'] = getCatogoryFromTotalCards(mem['SYL'][analSxd()])
+        for xs in XS:
+                for x in mem['SYL'][xs]:
+                        for y in anal['cards']:
+                                try: anal['cards'].remove(x)
+                                except: pass
+
+def analRoundFinished():
+        return (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0 and mem['XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0)
+
+def analSxd():
+        if (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0):
+                if (mem['XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 2
+                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 3
                 return 4
         else:
-                if (mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 1
-                if (mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 4
+                if (mem['SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 1
+                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 4
                 return 3
         assert False; # not supposed to be here.
 
-def handleLastRound(mem):
-        onLastPlayed(past['ME'], mem['ADD_MY_LAST_ROUND'], '我家')
-        onLastPlayed(past['XJ'], mem['ADD_XJ_LAST_ROUND'], '下家')
-        onLastPlayed(past['DJ'], mem['ADD_DJ_LAST_ROUND'], '对家')
-        onLastPlayed(past['SJ'], mem['ADD_SJ_LAST_ROUND'], '上家')
-
-def getCatogoryFromTotalCards(totalCards, p):
-        for x in totalCards:
-                if p in totalCards[x]:
+def getCatogoryFromTotalCards(p):
+        for x in anal['backupCards']:
+                if p in anal['backupCards'][x]:
                         return x
 
 ################### block of printing functions
@@ -213,17 +223,17 @@ while 1==1 and not testing:
         sleep(0.050)
         mem = captureMem()
 
-        assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_XJ_PLAYED_COUNT_LAST_ROUND']
-        assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_DJ_PLAYED_COUNT_LAST_ROUND']
-        assert mem['ADD_MY_PLAYED_COUNT_LAST_ROUND'] == mem['ADD_SJ_PLAYED_COUNT_LAST_ROUND']
+        assert mem['PLAYED_COUNT_SYL', XS[1]] == mem['XJ_PLAYED_COUNT_SYL']
+        assert mem['PLAYED_COUNT_SYL', XS[1]] == mem['DJ_PLAYED_COUNT_SYL']
+        assert mem['PLAYED_COUNT_SYL', XS[1]] == mem['SJ_PLAYED_COUNT_SYL']
 
         if hasLastRound(mem):
                 if totalCards == {}:
-                        totalCards = resetTotalCards(HS[mem['ADD_ZP_HS']], PM[mem['ADD_ZP_PM']])
+                        totalCards = resetTotalCards(HS[mem['ZP_HS']], PM[mem['ADD_ZP_PM']])
                 if roundFinished(mem):
                         if not lastRoundHandled:
                                 handleLastRound(mem)
-                                printBasedOnLastRound(mem, PM[mem['ADD_ZP_PM']])
+                                printBasedOnLastRound(mem, PM[mem['ZP_PM']])
 
                                 whoPlayedFirstThisRound = 'none'
                                 lastRoundHandled = True
@@ -231,7 +241,7 @@ while 1==1 and not testing:
                 else:
                         lastRoundHandled = False # we assume no another round played between 2 adjent mem-captures.
                         if whoPlayedFirstThisRound == 'none':
-                                whoPlayedFirstThisRound = SXD[analyzeWhoPlayedFirstThisRound(mem)]
+                                whoPlayedFirstThisRound = SXD[analSxd(mem)]
 
         else: # then we reset
                 past = {'ME':[], 'XJ':[], 'DJ':[], 'SJ':[]}
