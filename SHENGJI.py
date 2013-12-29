@@ -49,8 +49,8 @@ ADD=[
 ]
 
 ADD_DEPENDENCY={
-        'RECENT', 'PLAYED_COUNT_THIS_ROUND',
-        'SYL', 'PLAYED_COUNT_SYL'
+        'RECENT': 'PLAYED_COUNT_THIS_ROUND',
+        'SYL': 'PLAYED_COUNT_SYL'
 }
 
 
@@ -84,16 +84,40 @@ def captureMem():
 
         for add in ADD:
                 assert len(add) == 3
-                if add[0] not in ADD_DEPENDENCY:
-                        ret[add[0]] = {}
-                        ret[add[0]][add[1]] = readByteAsInt(add[2])
+                key0 = add[0]
+                key1 = add[1]
+                hexadd = add[2]
+                if key0 not in ADD_DEPENDENCY:
+                        if not key0 in ret:
+                                ret[key0] = {}
+                        ret[key0][key1] = readByteAsInt(hexadd)
         for add in ADD:
-                if add[0] in ADD_DEPENDENCY:
-                        ret[add[0]][add[1]] = [readACardAsString(add[2] + 0x8*i) for i in range(0, ret[ADD_DEPENDENCY[add[0]]][add[1]])]
+                assert len(add) == 3
+                key0 = add[0]
+                key1 = add[1]
+                hexadd = add[2]
+                if key0 in ADD_DEPENDENCY:
+                        keydep0 = ADD_DEPENDENCY[key0]
+                        if not key0 in ret:
+                                ret[key0] = {}
+                        ret[key0][key1] = [readACardAsString(hexadd + 0x8*i) for i in range(0, ret[keydep0][key1])]
 
         return ret
 
+def captureMemTest():
+        global readByteAsInt
+        global readACardAsString
+        readByteAsIntBackUP = readByteAsInt
+        readACardAsStringBackUP = readACardAsString
 
+        readByteAsInt = lambda x : 3
+        readACardAsString = lambda x : '黑2'
+
+        mem = captureMem()
+        print(mem)
+
+        readACardAsString = readACardAsStringBackUP
+        readByteAsInt = readByteAsIntBackUP
 #################### game analysis codes block:
 
 anal = {}
@@ -102,33 +126,54 @@ def resetAnal():
         anal = {}
         anal['cards'] = resetTotalCards()
         anal['backupCards'] = resetTotalCards()
+        anal['conclusions'] = []
+        anal['FEN'] = resetFEN()
+
+def resetFEN():
+        ret = []
+        for pm in [PM[5], PM[10], PM[13]]:
+                for hs in HS[-4:]:
+                        for x in range(2):
+                                ret.append(''.join([hs, pm]))
+        assert len(ret) == 24
+        return ret
 
 def analFromMen():
         anal['roundFinished'] = analRoundFinished()
         anal['hasLastRound'] = (mem['LEFT_CARDS_COUNT'][XS[1]] < 25)
-        anal['sylSxd'] = analSxd()
-        for xs in XS:
-                anal['history'][xs].extend(mem['SYL'][xs])
-                anal['history'][xs].append('|')
-        anal['lastRoundCatogory'] = getCatogoryFromTotalCards(mem['SYL'][analSxd()])
-        for xs in XS:
-                for x in mem['SYL'][xs]:
-                        for y in anal['cards']:
-                                try: anal['cards'].remove(x)
-                                except: pass
+        if anal['roundFinished']:
+                for xs in XS:
+                        anal['history'][xs].extend(mem['SYL'][xs])
+                        anal['history'][xs].append('|')
+                        for x in mem['SYL'][xs]:
+                                for y in anal['cards']:
+                                        try: anal['cards'].remove(x)
+                                        except: pass
+                                        if isFEN(x):
+                                                anal['FEN'].remove(x)
+                anal['sylCategory'] = getCatogoryFromTotalCards(mem['SYL'][anal['sylSxd']][0])
+                for xs in XS:
+                        if xs != anal['sylSxd']:
+                                for x in mem['SYL'][xs]:
+                                        if getCatogoryFromTotalCards(x) != anal['sylCategory']:
+                                                anal['conclusions'].append(xs+'无'+anal['sylCategory'])
+                del anal['sylSxd']
+        else:
+                if not anal.hasattr('sylSxd'):
+                        anal['sylSxd'] = analSxd()
 
 def analRoundFinished():
         return (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0 and mem['XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0)
 
 def analSxd():
         if (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0):
-                if (mem['XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 2
-                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return 3
-                return 4
+                if (mem['XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return XS[2]
+                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return XS[3]
+                return XS[4]
         else:
-                if (mem['SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 1
-                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return 4
-                return 3
+                if (mem['SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return XS[1]
+                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return XS[4]
+                return XS[3]
         assert False; # not supposed to be here.
 
 def getCatogoryFromTotalCards(p):
@@ -203,6 +248,8 @@ whoPlayedFirstThisRound = 'none' # see SXD
 ##################### test codes
 testing = 1==1
 if testing:
+        captureMemTest()
+        '''
         x = resetTotalCards('主', 'A')
         printTotalCards(x, 'A')
         assert getCatogoryFromTotalCards(x, '大王') == '主'
@@ -215,7 +262,7 @@ if testing:
         assert getCatogoryFromTotalCards(x, '红A') == '主'
         assert getCatogoryFromTotalCards(x, '方K') == '主'
         assert getCatogoryFromTotalCards(x, '黑K') == '黑'
-
+'''
 
 ##################### we start to read data from game and handle now.
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
