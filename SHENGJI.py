@@ -13,6 +13,8 @@ SYL - ShangYiLun (上一轮)
 SXD - ShuiXianDa (谁先打)
 '''
 
+######### test method array
+utarray = []
 
 ######### const variant definitions
 OpenProcess = windll.kernel32.OpenProcess
@@ -52,6 +54,7 @@ ADD_DEPENDENCY={
         'RECENT': 'PLAYED_COUNT_THIS_ROUND',
         'SYL': 'PLAYED_COUNT_SYL'
 }
+
 
 
 ##################### block of memory reading codes
@@ -104,7 +107,7 @@ def captureMem():
 
         return ret
 
-def captureMemTest():
+def testCaptureMem():
         global readByteAsInt
         global readACardAsString
         readByteAsIntBackUP = readByteAsInt
@@ -113,21 +116,45 @@ def captureMemTest():
         readByteAsInt = lambda x : 3
         readACardAsString = lambda x : '黑2'
 
-        mem = captureMem()
-        print(mem)
+        captureMem()
 
         readACardAsString = readACardAsStringBackUP
         readByteAsInt = readByteAsIntBackUP
+
+utarray.append(testCaptureMem)
 #################### game analysis codes block:
 
-anal = {}
 
-def resetAnal():
+def resetAnal(zphs, zppm):
         anal = {}
-        anal['cards'] = resetTotalCards()
-        anal['backupCards'] = resetTotalCards()
+        anal['cards'] = resetCards(zphs, zppm)
+        anal['backupCards'] = resetCards(zphs, zppm)
         anal['conclusions'] = []
         anal['FEN'] = resetFEN()
+        anal['history'] = resetHistory()
+        return anal
+
+def resetHistory():
+        ret = {}
+        for xs in XS.values():
+                ret[xs] = []
+        return ret
+def testResetHistory():
+        ret = resetHistory()
+        assert len(ret) == 4
+utarray.append(resetHistory)
+
+def convertToFEN(card):
+        assert len(card) in [2,3]
+        pm = card[1]
+        fen = {PM[5]:5, PM[10]:10, PM[13]:10}
+        return fen[pm] if pm in fen else 0
+def testConvertToFEN():
+        assert convertToFEN('方5') == 5
+        assert convertToFEN('方十') == 10
+        assert convertToFEN('方K') == 10
+        assert convertToFEN('方Q') == 0
+utarray.append(testConvertToFEN)
 
 def resetFEN():
         ret = []
@@ -135,46 +162,100 @@ def resetFEN():
                 for hs in HS[-4:]:
                         for x in range(2):
                                 ret.append(''.join([hs, pm]))
-        assert len(ret) == 24
         return ret
+def testResetREN():
+        ret = resetFEN()
+        assert len(ret) == 24
+        assert 200 == sum([convertToFEN(x) for x in ret])
+utarray.append(testResetREN)
 
-def analFromMen():
+def makeACard(hs, pm):
+        return ''.join([hs,pm])
+def testMakeACard():
+        assert makeACard('方', '3') == '方3'
+        assert makeACard('主', '大王') == '主大王'
+        assert makeACard('主', '小王') == '主小王'
+utarray.append(testMakeACard)
+
+def analOnceRoundFinished(anal, mem):
+        for xs in XS.values():
+                anal['history'][xs].extend(mem['SYL'][xs])
+                anal['history'][xs].append('|')
+                for x in mem['SYL'][xs]:
+                        for y in anal['cards']:
+                                try: anal['cards'].remove(x)
+                                except: pass
+                        if convertToFEN(x) > 0:
+                                anal['FEN'].remove(x)
+        anal['sylCategory'] = getCatogoryFromTotalCards(mem['SYL'][anal['sylSxd']][0])
+        for xs in XS.values():
+                if xs != anal['sylSxd']:
+                        for x in mem['SYL'][xs]:
+                                if getCatogoryFromTotalCards(x) != anal['sylCategory']:
+                                        anal['conclusions'].append(xs+'无'+anal['sylCategory'])
+        del anal['sylSxd']
+def testAnalOnceRoundFinished():
+        anal = resetAnal('黑', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['黑3']
+        mem['SYL']['下家'] = ['红4']
+        mem['SYL']['对家'] = ['梅5']
+        mem['SYL']['上家'] = ['方6']
+
+        analOnceRoundFinished(anal, mem)
+
+        assert anal['sylCategory'] == '红'
+utarray.append(testAnalOnceRoundFinished)
+
+
+def analFromMem():
         anal['roundFinished'] = analRoundFinished()
         anal['hasLastRound'] = (mem['LEFT_CARDS_COUNT'][XS[1]] < 25)
+        anal['zp'] = makeACard(mem['ZP']['HS'], mem['ZP']['PM'])
         if anal['roundFinished']:
-                for xs in XS:
-                        anal['history'][xs].extend(mem['SYL'][xs])
-                        anal['history'][xs].append('|')
-                        for x in mem['SYL'][xs]:
-                                for y in anal['cards']:
-                                        try: anal['cards'].remove(x)
-                                        except: pass
-                                        if isFEN(x):
-                                                anal['FEN'].remove(x)
-                anal['sylCategory'] = getCatogoryFromTotalCards(mem['SYL'][anal['sylSxd']][0])
-                for xs in XS:
-                        if xs != anal['sylSxd']:
-                                for x in mem['SYL'][xs]:
-                                        if getCatogoryFromTotalCards(x) != anal['sylCategory']:
-                                                anal['conclusions'].append(xs+'无'+anal['sylCategory'])
-                del anal['sylSxd']
+                analOnceRoundFinished()
         else:
-                if not anal.hasattr('sylSxd'):
+                if not 'sylSxd' in anal:
                         anal['sylSxd'] = analSxd()
 
 def analRoundFinished():
         return (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0 and mem['XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0)
 
-def analSxd():
-        if (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0):
-                if (mem['XJ_PLAYED_COUNT_THIS_ROUND'] > 0): return XS[2]
-                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] > 0): return XS[3]
+def analSxd(mem):
+        tmp = mem['PLAYED_COUNT_THIS_ROUND']
+        if (tmp[XS[1]] == 0):
+                if (tmp[XS[2]]> 0): return XS[2]
+                if (tmp[XS[3]]> 0): return XS[3]
                 return XS[4]
         else:
-                if (mem['SJ_PLAYED_COUNT_THIS_ROUND'] == 0): return XS[1]
-                if (mem['DJ_PLAYED_COUNT_THIS_ROUND'] == 0): return XS[4]
+                if (tmp[XS[4]]== 0): return XS[1]
+                if (tmp[XS[3]]==0): return XS[4]
                 return XS[3]
-        assert False; # not supposed to be here.
+def testAnalSxd():
+        mem = {}
+        mem['PLAYED_COUNT_THIS_ROUND'] = {}
+        def f(x,y): mem['PLAYED_COUNT_THIS_ROUND'][XS[x]]=y
+        def g(y1,y2,y3,y4):
+                f(1,y1)
+                f(2,y2)
+                f(3,y3)
+                f(4,y4)
+        g(0,0,0,1)
+        assert analSxd() == '上家'
+        g(0,0,1,1)
+        assert analSxd() == '对家'
+        g(0,1,1,1)
+        assert analSxd() == '下家'
+        g(1,0,0,0)
+        assert analSxd() == '本家'
+        g(1,0,0,1)
+        assert analSxd() == '上家'
+        g(1,0,1,1)
+        assert analSxd() == '对家'
+utarray.append(testAnalSxd)
+
 
 def getCatogoryFromTotalCards(p):
         for x in anal['backupCards']:
@@ -182,18 +263,17 @@ def getCatogoryFromTotalCards(p):
                         return x
 
 ################### block of printing functions
-def printBasedOnLastRound(mem, zppm):
-        print(whoPlayedFirstThisRound)
-        printTotalCards(totalCards, zppm)
+def printAnal():
+        printLeftCards()
         print('-------')
 
-def printTotalCards(totalCards, zppm):
-        for x in totalCards:
+def printLeftCards():
+        for x in anal['cards']:
                 print(x,end=':')
-                for y in totalCards[x]:
+                for y in anal['cards'][x]:
                         if x != HS[0]:
                                 print(y[1], end='')
-                        elif y[1] in PM[1:14] and y[1] != zppm:
+                        elif y[1] in PM[1:14] and y[1] != anal['zppm']:
                                 print(y[1], end='')
                         else:
                                 print(' '+y, end='')
@@ -202,15 +282,15 @@ def printTotalCards(totalCards, zppm):
 
 
 ################### initialize
-def resetTotalCards(zphs, zppm):
+def resetCards(zphs, zppm):
         assert zphs in HS
-        assert zppm in PM[1:13]
+        assert zppm in [PM[x] for x in range(1,14)]
 
         ret = {}
 
         ret[HS[0]] = []
         for hs in HS[-4:]:
-                y = PM[2: 14]
+                y = [PM[x] for x in range(2,14)]
                 y.append(PM[1])
                 y.remove(zppm)
 
@@ -231,8 +311,8 @@ def resetTotalCards(zphs, zppm):
         if zphs != HS[0]:
                 ret[HS[0]].append(''.join([zphs, zppm]))
                 ret[HS[0]].append(''.join([zphs, zppm]))
-        ret[HS[0]].extend([PM[-2],PM[-2],PM[-1],PM[-1]])
-        
+        ret[HS[0]].extend([PM[14],PM[14],PM[15],PM[15]])
+
         totallen = 0
         for x in ret:
                 totallen += len(ret[x])
@@ -248,14 +328,16 @@ whoPlayedFirstThisRound = 'none' # see SXD
 ##################### test codes
 testing = 1==1
 if testing:
-        captureMemTest()
+        for ut in utarray:
+                ut()
+        print('ut passed')
         '''
-        x = resetTotalCards('主', 'A')
+        x = resetCards('主', 'A')
         printTotalCards(x, 'A')
         assert getCatogoryFromTotalCards(x, '大王') == '主'
         assert getCatogoryFromTotalCards(x, '方A') == '主'
         assert getCatogoryFromTotalCards(x, '方K') == '方'
-        x = resetTotalCards('方', 'A')
+        x = resetCards('方', 'A')
         printTotalCards(x, 'A')
         assert getCatogoryFromTotalCards(x, '大王') == '主'
         assert getCatogoryFromTotalCards(x, '方A') == '主'
@@ -276,11 +358,11 @@ while 1==1 and not testing:
 
         if hasLastRound(mem):
                 if totalCards == {}:
-                        totalCards = resetTotalCards(HS[mem['ZP_HS']], PM[mem['ADD_ZP_PM']])
+                        totalCards = resetCards(HS[mem['ZP_HS']], PM[mem['ADD_ZP_PM']])
                 if roundFinished(mem):
                         if not lastRoundHandled:
                                 handleLastRound(mem)
-                                printBasedOnLastRound(mem, PM[mem['ZP_PM']])
+                                printAnal(mem, PM[mem['ZP_PM']])
 
                                 whoPlayedFirstThisRound = 'none'
                                 lastRoundHandled = True
