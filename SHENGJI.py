@@ -170,12 +170,28 @@ def testResetREN():
 utarray.append(testResetREN)
 
 def makeACard(hs, pm):
-        return ''.join([hs,pm])
+        return ''.join([hs,pm]) if not hs == HS[0] else pm
 def testMakeACard():
         assert makeACard('方', '3') == '方3'
-        assert makeACard('主', '大王') == '主大王'
-        assert makeACard('主', '小王') == '主小王'
+        assert makeACard('主', '大王') == '大王'
+        assert makeACard('主', '小王') == '小王'
 utarray.append(testMakeACard)
+
+def getHsOfCard(card):
+        return HS[0] if card in [PM[14], PM[15]] else card[0]
+def testGetHs():
+        assert getHsOfCard("大王") == "主"
+        assert getHsOfCard("小王") == "主"
+        assert getHsOfCard("方3") == "方"
+utarray.append(testGetHs)
+
+def getPmOfCard(card):
+        return card if card in [PM[14], PM[15]] else card[1]
+def testGetPm():
+        assert getPmOfCard("大王") == "大王"
+        assert getPmOfCard("小王") == "小王"
+        assert getPmOfCard("方J") == "J"
+utarray.append(testGetPm)
 
 def analOnceRoundFinished(anal, mem):
         for xs in XS.values():
@@ -187,11 +203,11 @@ def analOnceRoundFinished(anal, mem):
                                 except: pass
                         if convertToFEN(x) > 0:
                                 anal['FEN'].remove(x)
-        anal['sylCategory'] = getCatogoryFromTotalCards(mem['SYL'][anal['sylSxd']][0])
+        anal['sylCategory'] = getCatogoryFromTotalCards(anal, mem['SYL'][anal['sylSxd']][0])
         for xs in XS.values():
                 if xs != anal['sylSxd']:
                         for x in mem['SYL'][xs]:
-                                if getCatogoryFromTotalCards(x) != anal['sylCategory']:
+                                if getCatogoryFromTotalCards(anal, x) != anal['sylCategory']:
                                         anal['conclusions'].append(xs+'无'+anal['sylCategory'])
         del anal['sylSxd']
 def testAnalOnceRoundFinished():
@@ -211,16 +227,16 @@ utarray.append(testAnalOnceRoundFinished)
 
 
 def analFromMem():
-        anal['roundFinished'] = analRoundFinished()
+        anal['roundFinished'] = analRoundFinished(mem)
         anal['hasLastRound'] = (mem['LEFT_CARDS_COUNT'][XS[1]] < 25)
         anal['zp'] = makeACard(mem['ZP']['HS'], mem['ZP']['PM'])
         if anal['roundFinished']:
                 analOnceRoundFinished()
         else:
                 if not 'sylSxd' in anal:
-                        anal['sylSxd'] = analSxd()
+                        anal['sylSxd'] = analSxd(mem)
 
-def analRoundFinished():
+def analRoundFinished(mem):
         return (mem['PLAYED_COUNT_THIS_ROUND', XS[1]] == 0 and mem['XJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_DJ_PLAYED_COUNT_THIS_ROUND'] == 0 and mem['ADD_SJ_PLAYED_COUNT_THIS_ROUND'] == 0)
 
 def analSxd(mem):
@@ -243,21 +259,21 @@ def testAnalSxd():
                 f(3,y3)
                 f(4,y4)
         g(0,0,0,1)
-        assert analSxd() == '上家'
+        assert analSxd(mem) == '上家'
         g(0,0,1,1)
-        assert analSxd() == '对家'
+        assert analSxd(mem) == '对家'
         g(0,1,1,1)
-        assert analSxd() == '下家'
+        assert analSxd(mem) == '下家'
         g(1,0,0,0)
-        assert analSxd() == '本家'
+        assert analSxd(mem) == '本家'
         g(1,0,0,1)
-        assert analSxd() == '上家'
+        assert analSxd(mem) == '上家'
         g(1,0,1,1)
-        assert analSxd() == '对家'
+        assert analSxd(mem) == '对家'
 utarray.append(testAnalSxd)
 
 
-def getCatogoryFromTotalCards(p):
+def getCatogoryFromTotalCards(anal, p):
         for x in anal['backupCards']:
                 if p in anal['backupCards'][x]:
                         return x
@@ -331,20 +347,6 @@ if testing:
         for ut in utarray:
                 ut()
         print('ut passed')
-        '''
-        x = resetCards('主', 'A')
-        printTotalCards(x, 'A')
-        assert getCatogoryFromTotalCards(x, '大王') == '主'
-        assert getCatogoryFromTotalCards(x, '方A') == '主'
-        assert getCatogoryFromTotalCards(x, '方K') == '方'
-        x = resetCards('方', 'A')
-        printTotalCards(x, 'A')
-        assert getCatogoryFromTotalCards(x, '大王') == '主'
-        assert getCatogoryFromTotalCards(x, '方A') == '主'
-        assert getCatogoryFromTotalCards(x, '红A') == '主'
-        assert getCatogoryFromTotalCards(x, '方K') == '主'
-        assert getCatogoryFromTotalCards(x, '黑K') == '黑'
-'''
 
 ##################### we start to read data from game and handle now.
 processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
