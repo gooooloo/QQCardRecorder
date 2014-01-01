@@ -210,7 +210,7 @@ def analOnceRoundFinished(anal, mem):
                                 if getCatogoryFromTotalCards(anal, x) != anal['sylCategory']:
                                         anal['conclusions'].append(xs+'无'+anal['sylCategory'])
         del anal['sylSxd']
-def testAnalOnceRoundFinished():
+def testAnalSylCategory():
         anal = resetAnal('黑', '2')
         anal['sylSxd'] = '下家'
         mem = {}
@@ -223,7 +223,76 @@ def testAnalOnceRoundFinished():
         analOnceRoundFinished(anal, mem)
 
         assert anal['sylCategory'] == '红'
-utarray.append(testAnalOnceRoundFinished)
+utarray.append(testAnalSylCategory)
+def testLackOfColorBasic():
+        anal = resetAnal('黑', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['黑3']
+        mem['SYL']['下家'] = ['红4']
+        mem['SYL']['对家'] = ['梅5']
+        mem['SYL']['上家'] = ['方6']
+
+        analOnceRoundFinished(anal, mem)
+
+        assert len(anal['conclusions']) == 3
+        assert '本家无红' in anal['conclusions']
+        assert '对家无红' in anal['conclusions']
+        assert '上家无红' in anal['conclusions']
+utarray.append(testLackOfColorBasic)
+def testLackOfColorComplex():
+        anal = resetAnal('黑', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['黑3', '红3']
+        mem['SYL']['下家'] = ['红4', '红4']
+        mem['SYL']['对家'] = ['梅5', '红5']
+        mem['SYL']['上家'] = ['方6', '红6']
+
+        analOnceRoundFinished(anal, mem)
+
+        assert len(anal['conclusions']) == 3
+        assert '本家无红' in anal['conclusions']
+        assert '对家无红' in anal['conclusions']
+        assert '上家无红' in anal['conclusions']
+utarray.append(testLackOfColorComplex)
+def testLackOfZP():
+        anal = resetAnal('红', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['黑3']
+        mem['SYL']['下家'] = ['红4']
+        mem['SYL']['对家'] = ['梅5']
+        mem['SYL']['上家'] = ['方6']
+
+        analOnceRoundFinished(anal, mem)
+
+        assert len(anal['conclusions']) == 3
+        assert '本家无主' in anal['conclusions']
+        assert '对家无主' in anal['conclusions']
+        assert '上家无主' in anal['conclusions']
+utarray.append(testLackOfZP)
+def testLackOfZP2():
+        anal = resetAnal('红', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['黑3']
+        mem['SYL']['下家'] = ['大王']
+        mem['SYL']['对家'] = ['梅5']
+        mem['SYL']['上家'] = ['方6']
+
+        analOnceRoundFinished(anal, mem)
+
+        assert len(anal['conclusions']) == 3
+        assert '本家无主' in anal['conclusions']
+        assert '对家无主' in anal['conclusions']
+        assert '上家无主' in anal['conclusions']
+utarray.append(testLackOfZP2)
+
 
 
 def analFromMem():
