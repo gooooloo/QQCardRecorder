@@ -292,6 +292,23 @@ def testLackOfZP2():
         assert '对家无主' in anal['conclusions']
         assert '上家无主' in anal['conclusions']
 utarray.append(testLackOfZP2)
+def testLackOfPair():
+        anal = resetAnal('黑', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['黑3', '红3']
+        mem['SYL']['下家'] = ['红4', '红4']
+        mem['SYL']['对家'] = ['梅5', '红5']
+        mem['SYL']['上家'] = ['方6', '红6']
+
+        analOnceRoundFinished(anal, mem)
+
+        assert len(anal['conclusions']) == 3
+        assert '本家无红对' in anal['conclusions']
+        assert '对家无红对' in anal['conclusions']
+        assert '上家无红对' in anal['conclusions']
+#utarray.append(testLackOfPair)
 
 
 
