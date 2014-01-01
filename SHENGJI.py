@@ -193,6 +193,18 @@ def testGetPm():
         assert getPmOfCard("方J") == "J"
 utarray.append(testGetPm)
 
+def hasPair(cardList):
+        if len(cardList) < 2: return False;
+        cardSet = set(cardList)
+        return len(cardSet) < len(cardList)
+def testHasPair():
+        assert hasPair(['大王','大王'])
+        assert hasPair(['方4', '大王','大王'])
+        assert not hasPair(['大王'])
+        assert not hasPair(['小王','大王'])
+utarray.append(testHasPair)
+
+
 def analOnceRoundFinished(anal, mem):
         for xs in XS.values():
                 anal['history'][xs].extend(mem['SYL'][xs])
@@ -209,6 +221,11 @@ def analOnceRoundFinished(anal, mem):
                         for x in mem['SYL'][xs]:
                                 if getCatogoryFromTotalCards(anal, x) != anal['sylCategory']:
                                         anal['conclusions'].append(xs+'无'+anal['sylCategory'])
+        if hasPair(mem['SYL'][anal['sylSxd']]):
+                for xs in XS.values():
+                        if xs != anal['sylSxd']:
+                                if not hasPair(mem['SYL'][xs]):
+                                        anal['conclusions'].append(xs+'无'+anal['sylCategory']+'对')
         del anal['sylSxd']
 def testAnalSylCategory():
         anal = resetAnal('黑', '2')
@@ -247,7 +264,7 @@ def testLackOfColorComplex():
         mem = {}
         mem['SYL'] = {}
         mem['SYL']['本家'] = ['黑3', '红3']
-        mem['SYL']['下家'] = ['红4', '红4']
+        mem['SYL']['下家'] = ['红4', '红5']
         mem['SYL']['对家'] = ['梅5', '红5']
         mem['SYL']['上家'] = ['方6', '红6']
 
@@ -297,18 +314,33 @@ def testLackOfPair():
         anal['sylSxd'] = '下家'
         mem = {}
         mem['SYL'] = {}
-        mem['SYL']['本家'] = ['黑3', '红3']
+        mem['SYL']['本家'] = ['红8', '红3']
         mem['SYL']['下家'] = ['红4', '红4']
-        mem['SYL']['对家'] = ['梅5', '红5']
-        mem['SYL']['上家'] = ['方6', '红6']
+        mem['SYL']['对家'] = ['红9', '红5']
+        mem['SYL']['上家'] = ['红J', '红6']
 
         analOnceRoundFinished(anal, mem)
-
         assert len(anal['conclusions']) == 3
         assert '本家无红对' in anal['conclusions']
         assert '对家无红对' in anal['conclusions']
         assert '上家无红对' in anal['conclusions']
-#utarray.append(testLackOfPair)
+utarray.append(testLackOfPair)
+def testLackOfPairComplex():
+        anal = resetAnal('黑', '2')
+        anal['sylSxd'] = '下家'
+        mem = {}
+        mem['SYL'] = {}
+        mem['SYL']['本家'] = ['红8', '红3']
+        mem['SYL']['下家'] = ['红4', '红4']
+        mem['SYL']['对家'] = ['黑5', '黑5']
+        mem['SYL']['上家'] = ['红J', '红6']
+
+        analOnceRoundFinished(anal, mem)
+        assert len(anal['conclusions']) == 3
+        assert '本家无红对' in anal['conclusions']
+        assert '对家无红对' in anal['conclusions']
+        assert '上家无红对' in anal['conclusions']
+utarray.append(testLackOfPairComplex)
 
 
 
