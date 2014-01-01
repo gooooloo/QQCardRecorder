@@ -193,15 +193,19 @@ def testGetPm():
         assert getPmOfCard("方J") == "J"
 utarray.append(testGetPm)
 
-def hasPair(cardList):
-        if len(cardList) < 2: return False;
-        cardSet = set(cardList)
-        return len(cardSet) < len(cardList)
+def getPairList(cardList):
+        ret = []
+        if len(cardList) < 2: return ret
+        for i in range(1, len(cardList)):
+                if cardList[i] == cardList[i-1]:
+                        ret.append(getHsOfCard(cardList[i]))
+        return ret
 def testHasPair():
-        assert hasPair(['大王','大王'])
-        assert hasPair(['方4', '大王','大王'])
-        assert not hasPair(['大王'])
-        assert not hasPair(['小王','大王'])
+        assert getPairList(['大王','大王']) == ['主']
+        assert getPairList(['大王','大王', '红3', '红3']) == ['主', '红']
+        assert getPairList(['方4', '大王','大王']) == ['主']
+        assert getPairList(['大王']) == []
+        assert getPairList(['小王','大王']) == []
 utarray.append(testHasPair)
 
 
@@ -221,10 +225,11 @@ def analOnceRoundFinished(anal, mem):
                         for x in mem['SYL'][xs]:
                                 if getCatogoryFromTotalCards(anal, x) != anal['sylCategory']:
                                         anal['conclusions'].append(xs+'无'+anal['sylCategory'])
-        if hasPair(mem['SYL'][anal['sylSxd']]):
+        pairList = getPairList(mem['SYL'][anal['sylSxd']])
+        if len(pairList) > 0:
                 for xs in XS.values():
                         if xs != anal['sylSxd']:
-                                if not hasPair(mem['SYL'][xs]):
+                                if not getPairList(mem['SYL'][xs]):
                                         anal['conclusions'].append(xs+'无'+anal['sylCategory']+'对')
         del anal['sylSxd']
 def testAnalSylCategory():
