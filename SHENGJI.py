@@ -131,7 +131,6 @@ def resetAnal(zphs, zppm):
         anal['conclusions'] = []
         anal['FEN'] = resetFEN()
         anal['history'] = resetHistory()
-        anal['myLeftCardsCountLastPrinted'] = 'none'
         anal['myLeftCardsCount'] = 25
         anal['zp'] = makeACard(zphs, zppm)
         anal['status'] = 'ready'
@@ -365,7 +364,7 @@ def analFromMem(anal, mem):
         anal['playedCountThisRound'] = mem['PLAYED_COUNT_THIS_ROUND']
         anal['SYL'] = mem['SYL']
 
-def analSmartly(anal):
+def smartAnalAndPrint(anal):
         if not 'status' in anal:
                 return
         assert anal['status'] == 'ready' or anal['status'] == 'ongoing'
@@ -536,7 +535,7 @@ if processHandle != 0:
 
                 analFromMem(anal, mem)
 
-                analSmartly(anal)
+                smartAnalAndPrint(anal)
 
 CloseHandle(processHandle)
 
