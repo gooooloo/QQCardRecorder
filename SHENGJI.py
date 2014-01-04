@@ -200,18 +200,19 @@ def analyzeOnRoundFinish(anal):
         updateFen(anal)
         analyzeLackOfCategory(anal)
         analyzeLackOfPair(anal)
-        analyzePossiblePairs(anal)
+        analyzePossiblePairsExceptMine(anal)
 
-def analyzePossiblePairs(anal):
-        anal['POSSIBLE_PAIRS'] = {}
+def analyzePossiblePairsExceptMine(anal):
+        anal['POSSIBLE_PAIRS_EXCEPT_MINE'] = {}
         for category in anal['CARDS']:
-                anal['POSSIBLE_PAIRS'][category] = []
+                anal['POSSIBLE_PAIRS_EXCEPT_MINE'][category] = []
                 cardList = anal['CARDS'][category]
                 for i in range(1, len(cardList)):
                         if cardList[i-1] == cardList[i]:
-                                anal['POSSIBLE_PAIRS'][category].append(getPmOfCard(cardList[i]))
+                                if not cardList[i] in anal['MY_CARDS']:
+                                        anal['POSSIBLE_PAIRS_EXCEPT_MINE'][category].append(getPmOfCard(cardList[i]))
 
-# this is where the magic starts. All information we need from memory is these four things, and we will remember and analyze all other things!
+# this is where the magic starts. All information we need from memory is these few things, and we will remember and analyze all other things!
 # AMAZING, isn't it? :)
 def analFromMem(anal, mem):
         assert mem['CPS_SYL'][XS[1]] == mem['CPS_SYL'][XS[2]]
@@ -316,7 +317,7 @@ def printAnal(anal):
         #printHistory(anal)
         printLeftFen(anal)
         printLackOf(anal)
-        printPossiblePairs(anal)
+        printPossiblePairsExceptMine(anal)
         print('-----------------------------------------')
         print('-----------------------------------------')
 
@@ -325,11 +326,11 @@ def printMyCards(anal):
         print(' '.join(anal['MY_CARDS']))
         print()
 
-def printPossiblePairs(anal):
-        print('可能的对:')
-        for category in anal['POSSIBLE_PAIRS']:
+def printPossiblePairsExceptMine(anal):
+        print('我之外可能的对:')
+        for category in anal['POSSIBLE_PAIRS_EXCEPT_MINE']:
                 print(category, end=':')
-                for x in anal['POSSIBLE_PAIRS'][category]:
+                for x in anal['POSSIBLE_PAIRS_EXCEPT_MINE'][category]:
                         print(' '+x+x, end='')
                 print()
         print()
