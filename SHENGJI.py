@@ -158,7 +158,7 @@ def updateCards(anal):
         for xs in XS.values():
                 for x in anal['SYL'][xs]:
                         for y in anal['CARDS']:
-                                try: y.remove(x)
+                                try: anal['CARDS'][y].remove(x)
                                 except: pass
 
 def updateFen(anal):
@@ -173,7 +173,9 @@ def analyzeLackOfCategory(anal):
                 if xs != anal['SXD']:
                         for x in anal['SYL'][xs]:
                                 if analyzeCategory(anal['ZP'], x) != category:
-                                        anal['CONCLUSIONS'].append(xs+'无'+category)
+                                        st = xs+'无'+category
+                                        if not st in anal['CONCLUSIONS']:
+                                                anal['CONCLUSIONS'].append(st)
 
 def analyzeLackOfPair(anal):
         category = analyzeCategory(anal['ZP'], anal['SYL'][anal['SXD']][0])
@@ -182,7 +184,9 @@ def analyzeLackOfPair(anal):
                 for xs in XS.values():
                         if xs != anal['SXD']:
                                 if not matchesPairList(getPairList(anal['SYL'][xs]), pairList):
-                                        anal['CONCLUSIONS'].append(xs+'无'+category+'对')
+                                        st = xs+'无'+category+'对'
+                                        if not st in anal['CONCLUSIONS']:
+                                                anal['CONCLUSIONS'].append(st)
 
 
 def analyzeOnRoundFinish(anal):
