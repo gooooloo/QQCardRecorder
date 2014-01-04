@@ -31,6 +31,7 @@ XS = {1:'本家', 2:'下家', 3:'对家', 4:'上家' }
 
 ADD=[
         ('LEFT_CARDS_COUNT', XS[1], 0x004ca000),
+        ('LEFT_CARDS', XS[1], 0x004C9D1E),
         ('CPS_BL', XS[1], 0x004C8C50),
         ('CPS_BL', XS[2], 0x004C7BE8),
         ('CPS_BL', XS[3], 0x004C78A0),
@@ -53,7 +54,8 @@ ADD=[
 
 ADD_DEPENDENCY={
         'BL': 'CPS_BL',
-        'SYL': 'CPS_SYL'
+        'SYL': 'CPS_SYL',
+        'LEFT_CARDS': 'LEFT_CARDS_COUNT'
 }
 
 
@@ -216,14 +218,15 @@ def analFromMem(anal, mem):
         assert mem['CPS_SYL'][XS[1]] == mem['CPS_SYL'][XS[3]]
         assert mem['CPS_SYL'][XS[1]] == mem['CPS_SYL'][XS[4]]
 
-        anal['MY_LEFT_CARDS_COUNT'] = mem['LEFT_CARDS_COUNT'][XS[1]]
+        anal['MY_CARDS_COUNT'] = mem['LEFT_CARDS_COUNT'][XS[1]]
+        anal['MY_CARDS'] = mem['LEFT_CARDS'][XS[1]]
         anal['CPS_BL'] = mem['CPS_BL']
         anal['SYL'] = mem['SYL']
         anal['ZPHS'] = mem['ZP']['HS']
         anal['ZPPM'] = mem['ZP']['PM']
 
-        if anal['MY_LEFT_CARDS_COUNT'] > anal['MAX_MY_LEFT_COUNT_IN_PAST']:
-                anal['MAX_MY_LEFT_COUNT_IN_PAST'] = anal['MY_LEFT_CARDS_COUNT']
+        if anal['MY_CARDS_COUNT'] > anal['MAX_MY_LEFT_COUNT_IN_PAST']:
+                anal['MAX_MY_LEFT_COUNT_IN_PAST'] = anal['MY_CARDS_COUNT']
 
         return anal
 
@@ -238,14 +241,14 @@ def smartAnalyzeAndPrint(anal):
 
         if isRoundOngoing(anal):
                 analyzeAndUpdateXsd(anal)
-        elif anal['MY_LEFT_CARDS_COUNT'] in anal['FOOTAGES']:
+        elif anal['MY_CARDS_COUNT'] in anal['FOOTAGES']:
                 pass
         else: # game ongoing but not round ongoing, then must be just finished a round, and need to update and print
                 analyzeOnRoundFinish(anal)
                 printAnal(anal)
 
                 anal['SXD'] = 'none'
-                anal['FOOTAGES'].append(anal['MY_LEFT_CARDS_COUNT'])
+                anal['FOOTAGES'].append(anal['MY_CARDS_COUNT'])
 
         return anal
 
@@ -260,7 +263,7 @@ def isRoundOngoing(anal):
                 return False
 
         y = [xs for xs in XS.values() if anal['CPS_BL'][xs] is not 0]
-        if anal['MY_LEFT_CARDS_COUNT'] >= 25:
+        if anal['MY_CARDS_COUNT'] >= 25:
                 return len(y) > 1
         else:
                 return len(y) > 0
@@ -269,7 +272,7 @@ def isGameOngoing(anal):
         if isDeliveryingCards(anal):
                 return False
 
-        myLeftCnt = anal['MY_LEFT_CARDS_COUNT']
+        myLeftCnt = anal['MY_CARDS_COUNT']
         if 0 < myLeftCnt and myLeftCnt < 25:
                 return True
 
@@ -308,6 +311,7 @@ def analyzeCategory(zpcard, p):
 
 ################### block of printing functions
 def printAnal(anal):
+        printMyCards(anal)
         printLeftCards(anal)
         #printHistory(anal)
         printLeftFen(anal)
@@ -315,6 +319,11 @@ def printAnal(anal):
         printPossiblePairs(anal)
         print('-----------------------------------------')
         print('-----------------------------------------')
+
+def printMyCards(anal):
+        print('我剩下的牌:')
+        print(' '.join(anal['MY_CARDS']))
+        print()
 
 def printPossiblePairs(anal):
         print('可能的对:')
@@ -467,12 +476,12 @@ if __name__ == '__main__':
                         if not isGameOngoing(anal):
                                 print('.', end='')
                                 sys.stdout.flush()
-                                if anal['MY_LEFT_CARDS_COUNT'] >= 25:
+                                if anal['MY_CARDS_COUNT'] >= 25:
                                         anal = onZpReliable(anal)
                         else:
                                 anal = smartAnalyzeAndPrint(anal)
 
-                                if anal['MY_LEFT_CARDS_COUNT'] == 0:
+                                if anal['MY_CARDS_COUNT'] == 0:
                                         print('game finished')
                                         anal = resetAnal()
 
