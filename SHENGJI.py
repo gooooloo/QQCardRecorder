@@ -3,6 +3,7 @@ from ctypes import *
 from ctypes.wintypes import *
 from time import sleep
 import psutil
+import sys
 
 ''' Vacabularies:
 HS - HuaSe (花色，如黑桃，方块等等)
@@ -10,11 +11,11 @@ PM - PM (牌面，如A，2，3，J，Q，大王等等)
 ZP - ZhuPai (主牌)
 XS - XuanShou (选手)
 SYL - ShangYiLun (上一轮)
+BL - BenLun (本轮)
 SXD - ShuiXianDa (谁先打)
+CPS - ChuPaiShu (出牌数)
 '''
 
-######### test method array
-utarray = []
 
 ######### const variant definitions
 OpenProcess = windll.kernel32.OpenProcess
@@ -30,31 +31,30 @@ XS = {1:'本家', 2:'下家', 3:'对家', 4:'上家' }
 
 ADD=[
         ('LEFT_CARDS_COUNT', XS[1], 0x004ca000),
-        ('PLAYED_COUNT_THIS_ROUND', XS[1], 0x004C8C50),
-        ('PLAYED_COUNT_THIS_ROUND', XS[2], 0x004C7BE8),
-        ('PLAYED_COUNT_THIS_ROUND', XS[3], 0x004C78A0),
-        ('PLAYED_COUNT_THIS_ROUND', XS[4], 0x004C7558),
-        ('RECENT', XS[1], 0x004C896E),
-        ('RECENT', XS[2], 0x004C7906),
-        ('RECENT', XS[3], 0x004C75BE),
-        ('RECENT', XS[4], 0x004C7276),
-        ('PLAYED_COUNT_SYL', XS[1], 0x004C7F30),
-        ('PLAYED_COUNT_SYL', XS[2], 0x004C8278),
-        ('PLAYED_COUNT_SYL', XS[3], 0x004C85C0),
-        ('PLAYED_COUNT_SYL', XS[4], 0x004C8908),
+        ('CPS_BL', XS[1], 0x004C8C50),
+        ('CPS_BL', XS[2], 0x004C7BE8),
+        ('CPS_BL', XS[3], 0x004C78A0),
+        ('CPS_BL', XS[4], 0x004C7558),
+        ('BL', XS[1], 0x004C896E),
+        ('BL', XS[2], 0x004C7906),
+        ('BL', XS[3], 0x004C75BE),
+        ('BL', XS[4], 0x004C7276),
+        ('CPS_SYL', XS[1], 0x004C7F30),
+        ('CPS_SYL', XS[2], 0x004C8278),
+        ('CPS_SYL', XS[3], 0x004C85C0),
+        ('CPS_SYL', XS[4], 0x004C8908),
         ('SYL', XS[1], 0x004C7C4E),
         ('SYL', XS[2], 0x004C8626),
         ('SYL', XS[3], 0x004C82DE),
         ('SYL', XS[4], 0x004C7F96),
         ('ZP', 'PM', 0x004C6E20),
-        ('ZP', 'HS', 0x004c6E38)
+        ('ZP', 'HS', 0x004C6E38)
 ]
 
 ADD_DEPENDENCY={
-        'RECENT': 'PLAYED_COUNT_THIS_ROUND',
-        'SYL': 'PLAYED_COUNT_SYL'
+        'BL': 'CPS_BL',
+        'SYL': 'CPS_SYL'
 }
-
 
 
 ##################### block of memory reading codes
@@ -107,56 +107,245 @@ def captureMem():
 
         return ret
 
-def testCaptureMem():
-        global readByteAsInt
-        global readACardAsString
-        readByteAsIntBackUP = readByteAsInt
-        readACardAsStringBackUP = readACardAsString
 
-        readByteAsInt = lambda x : 3
-        readACardAsString = lambda x : '黑2'
-
-        captureMem()
-
-        readACardAsString = readACardAsStringBackUP
-        readByteAsInt = readByteAsIntBackUP
-
-utarray.append(testCaptureMem)
 #################### game analysis codes block:
+def makeACard(hs, pm):
+        return pm if pm in [PM[14], PM[15]] else ''.join([hs,pm])
+
+def getHsOfCard(card):
+        return HS[0] if card in [PM[14], PM[15]] else card[0]
+
+def getPmOfCard(card):
+        return card if card in [PM[14], PM[15]] else card[1]
+
+def getFenOfCard(card):
+        pm = getPmOfCard(card)
+        fen = {PM[5]:5, PM[10]:10, PM[13]:10}
+        return fen[pm] if pm in fen else 0
+
+def getPairList(cardList):
+        ret = []
+        if len(cardList) < 2: return ret
+
+        #for simple, we assume the card list is in good order, and same cards are put together.
+        for i in range(1, len(cardList)):
+                if cardList[i] == cardList[i-1]:
+                        ret.append(getHsOfCard(cardList[i]))
+        return ret
+
+def matchesPairList(pairList, pairListToMatch):
+        assert len(pairListToMatch) > 0
+        assert len(set(pairListToMatch)) == 1
+
+        if len(pairList) < len(pairListToMatch): return False
+        if len(set(pairList)) > 1: return False
+        if pairList[0] != pairListToMatch[0]: return False;
+
+        return True
+
+def updateHistory(anal):
+        if not 'HISTORY' in anal: anal['HISTORY'] = {}
+        if not 'SXD' in anal['HISTORY']: anal['HISTORY']['SXD'] = []
+
+        anal['HISTORY']['SXD'].append(anal['SXD'])
+        anal['HISTORY']['SXD'].append('|')
+        for xs in XS.values():
+                if not xs in anal['HISTORY']: anal['HISTORY'][xs] = []
+                anal['HISTORY'][xs].extend(anal['SYL'][xs])
+                anal['HISTORY'][xs].append('|')
+
+def updateCards(anal):
+        for xs in XS.values():
+                for x in anal['SYL'][xs]:
+                        for y in anal['CARDS']:
+                                try: y.remove(x)
+                                except: pass
+
+def updateFen(anal):
+        for xs in XS.values():
+                for x in anal['SYL'][xs]:
+                        if getFenOfCard(x) > 0:
+                                anal['FEN'].remove(x)
+
+def analyzeLackOfCategory(anal):
+        category = analyzeCategory(anal['ZP'], anal['SYL'][anal['SXD']][0])
+        for xs in XS.values():
+                if xs != anal['SXD']:
+                        for x in anal['SYL'][xs]:
+                                if analyzeCategory(anal['ZP'], x) != category:
+                                        anal['CONCLUSIONS'].append(xs+'无'+category)
+
+def analyzeLackOfPair(anal):
+        category = analyzeCategory(anal['ZP'], anal['SYL'][anal['SXD']][0])
+        pairList = getPairList(anal['SYL'][anal['SXD']])
+        if len(pairList) > 0:
+                for xs in XS.values():
+                        if xs != anal['SXD']:
+                                if not matchesPairList(getPairList(anal['SYL'][xs]), pairList):
+                                        anal['CONCLUSIONS'].append(xs+'无'+category+'对')
 
 
-def resetAnal(zphs, zppm):
+def analyzeOnRoundFinish(anal):
+        updateHistory(anal)
+        updateCards(anal)
+        updateFen(anal)
+        analyzeLackOfCategory(anal)
+        analyzeLackOfPair(anal)
+
+# this is where the magic starts. All information we need from memory is these four things, and we will remember and analyze all other things!
+# AMAZING, isn't it? :)
+def analFromMem(anal, mem):
+        assert mem['CPS_SYL'][XS[1]] == mem['CPS_SYL'][XS[2]]
+        assert mem['CPS_SYL'][XS[1]] == mem['CPS_SYL'][XS[3]]
+        assert mem['CPS_SYL'][XS[1]] == mem['CPS_SYL'][XS[4]]
+
+        anal['MY_LEFT_CARDS_COUNT'] = mem['LEFT_CARDS_COUNT'][XS[1]]
+        anal['CPS_BL'] = mem['CPS_BL']
+        anal['SYL'] = mem['SYL']
+        anal['ZPHS'] = mem['ZP']['HS']
+        anal['ZPPM'] = mem['ZP']['PM']
+
+        if anal['MY_LEFT_CARDS_COUNT'] > anal['MAX_MY_LEFT_COUNT_IN_PAST']:
+                anal['MAX_MY_LEFT_COUNT_IN_PAST'] = anal['MY_LEFT_CARDS_COUNT']
+
+        return anal
+
+def analyzeAndUpdateXsd(anal):
+        if anal['SXD'] == 'none':
+                anal['SXD'] = analyzeSXD(anal)
+
+def smartAnalyzeAndPrint(anal):
+        if not isGameOngoing(anal):
+                print('try to analyze but game is not ongoing')
+                return anal
+
+        if isRoundOngoing(anal):
+                analyzeAndUpdateXsd(anal)
+        elif anal['MY_LEFT_CARDS_COUNT'] in anal['FOOTAGES']:
+                pass
+        else: # game ongoing but not round ongoing, then must be just finished a round, and need to update and print
+                analyzeOnRoundFinish(anal)
+                printAnal(anal)
+
+                anal['SXD'] = 'none'
+                anal['FOOTAGES'].append(anal['MY_LEFT_CARDS_COUNT'])
+
+        return anal
+
+def isDeliveryingCards(anal):
+        return anal['MAX_MY_LEFT_COUNT_IN_PAST'] < 25
+
+def isRoundOngoing(anal):
+        if not 'CPS_BL' in anal: # possible when we are waiting for a game
+                return False
+
+        if isDeliveryingCards(anal):
+                return False
+
+        y = [xs for xs in XS.values() if anal['CPS_BL'][xs] is not 0]
+        if anal['MY_LEFT_CARDS_COUNT'] >= 25:
+                return len(y) > 1
+        else:
+                return len(y) > 0
+
+def isGameOngoing(anal):
+        if isDeliveryingCards(anal):
+                return False
+
+        myLeftCnt = anal['MY_LEFT_CARDS_COUNT']
+        if 0 < myLeftCnt and myLeftCnt < 25:
+                return True
+
+        if isRoundOngoing(anal):
+                return True
+
+        if myLeftCnt == 0 and len(anal['FOOTAGES']) > 0:
+                return True
+
+        return False
+
+def analyzeSXD(anal):
+        if not 'CPS_BL' in anal:
+                return 'none'
+
+        x = anal['CPS_BL']
+        if (x[XS[1]] == 0):
+                if (x[XS[2]]> 0): return XS[2]
+                if (x[XS[3]]> 0): return XS[3]
+                return XS[4]
+        else:
+                if (x[XS[4]]== 0): return XS[1]
+                if (x[XS[3]]==0): return XS[4]
+                return XS[3]
+
+
+def analyzeCategory(zpcard, p):
+        if getPmOfCard(p) == getPmOfCard(zpcard):
+                return HS[0]
+        elif getHsOfCard(p) == HS[0]:
+                return HS[0]
+        elif getHsOfCard(p) == getHsOfCard(zpcard):
+                return HS[0]
+        else:
+                return getHsOfCard(p)
+
+################### block of printing functions
+def printAnal(anal):
+        printLeftCards(anal)
+        printHistory(anal)
+        printConclusions(anal)
+        print('-------')
+
+def printConclusions(anal):
+        print('conclusions:')
+        print(anal['CONCLUSIONS'])
+
+def printHistory(anal):
+        print('history:')
+        x = anal['HISTORY']
+        for y in x:
+                print(y, x[y])
+
+def printLeftCards(anal):
+        print('left cards:')
+        for category in anal['CARDS']:
+                print(category,end=':')
+                for card in anal['CARDS'][category]:
+                        pm = getPmOfCard(card)
+                        if category != HS[0]:
+                                print(pm, end='')
+                        elif pm in [PM[i] for i in range(1,14)] and pm != getPmOfCard(anal['ZP']):
+                                print(pm, end='')
+                        else:
+                                print(' '+card, end='')
+                print()
+        print()
+
+
+################### initialize
+def resetAnal():
         anal = {}
-        anal['cards'] = resetCards(zphs, zppm)
-        anal['conclusions'] = []
+        anal['CONCLUSIONS'] = []
         anal['FEN'] = resetFEN()
-        anal['history'] = resetHistory()
-        anal['myLeftCardsCount'] = 25
-        anal['zp'] = makeACard(zphs, zppm)
-        anal['status'] = 'ready'
+        anal['HISTORY'] = resetHistory()
+        anal['MAX_MY_LEFT_COUNT_IN_PAST'] = 0
+        anal['SXD'] = 'none'
+        anal['FOOTAGES'] = []
+        return anal
+
+def onZpReliable(anal):
+        anal['ZP'] = makeACard(HS[anal['ZPHS']], PM[anal['ZPPM']])
+        del anal['ZPHS']
+        del anal['ZPPM']
+        anal['CARDS'] = resetCards(anal['ZP'])
         return anal
 
 def resetHistory():
         ret = {}
+        ret['SXD'] = []
         for xs in XS.values():
                 ret[xs] = []
         return ret
-def testResetHistory():
-        ret = resetHistory()
-        assert len(ret) == 4
-utarray.append(resetHistory)
-
-def convertToFEN(card):
-        assert len(card) in [2,3]
-        pm = card[1]
-        fen = {PM[5]:5, PM[10]:10, PM[13]:10}
-        return fen[pm] if pm in fen else 0
-def testConvertToFEN():
-        assert convertToFEN('方5') == 5
-        assert convertToFEN('方十') == 10
-        assert convertToFEN('方K') == 10
-        assert convertToFEN('方Q') == 0
-utarray.append(testConvertToFEN)
 
 def resetFEN():
         ret = []
@@ -165,332 +354,25 @@ def resetFEN():
                         for x in range(2):
                                 ret.append(''.join([hs, pm]))
         return ret
-def testResetREN():
-        ret = resetFEN()
-        assert len(ret) == 24
-        assert 200 == sum([convertToFEN(x) for x in ret])
-utarray.append(testResetREN)
 
-def makeACard(hs, pm):
-        return pm if pm in [PM[14], PM[15]] else ''.join([hs,pm])
-        return ''.join([hs,pm]) if not hs == HS[0] else pm
-def testMakeACard():
-        assert makeACard('方', '3') == '方3'
-        assert makeACard('主', '大王') == '大王'
-        assert makeACard('主', '小王') == '小王'
-        assert makeACard('主', '3') == '主3'
-utarray.append(testMakeACard)
+def resetCards(zp):
+        zphs = getHsOfCard(zp)
+        zppm = getPmOfCard(zp)
 
-def getHsOfCard(card):
-        return HS[0] if card in [PM[14], PM[15]] else card[0]
-def testGetHs():
-        assert getHsOfCard("大王") == "主"
-        assert getHsOfCard("小王") == "主"
-        assert getHsOfCard("方3") == "方"
-        assert getHsOfCard("主3") == "主"
-utarray.append(testGetHs)
-
-def getPmOfCard(card):
-        return card if card in [PM[14], PM[15]] else card[1]
-def testGetPm():
-        assert getPmOfCard("大王") == "大王"
-        assert getPmOfCard("小王") == "小王"
-        assert getPmOfCard("方J") == "J"
-utarray.append(testGetPm)
-
-def getPairList(cardList):
-        ret = []
-        if len(cardList) < 2: return ret
-        for i in range(1, len(cardList)):
-                if cardList[i] == cardList[i-1]:
-                        ret.append(getHsOfCard(cardList[i]))
-        return ret
-def testHasPair():
-        assert getPairList(['大王','大王']) == ['主']
-        assert getPairList(['大王','大王', '红3', '红3']) == ['主', '红']
-        assert getPairList(['方4', '大王','大王']) == ['主']
-        assert getPairList(['大王']) == []
-        assert getPairList(['小王','大王']) == []
-utarray.append(testHasPair)
-
-def matchesPairList(pairList, pairListTarget):
-        assert len(set(pairListTarget)) == 1
-        if len(pairList) < len(pairListTarget): return False
-        for x in pairList:
-                if x != pairListTarget[0]:
-                        return False
-        return True
-def testMatchPairList():
-        assert matchesPairList(['主'], ['主'])
-        assert not matchesPairList(['方'], ['主'])
-        assert not matchesPairList(['方'], ['方', '方'])
-utarray.append(testMatchPairList)
-
-def analOnceRoundFinished(anal):
-        for xs in XS.values():
-                anal['history'][xs].extend(anal['SYL'][xs])
-                anal['history'][xs].append('|')
-                for x in anal['SYL'][xs]:
-                        for y in anal['cards']:
-                                try: anal['cards'].remove(x)
-                                except: pass
-                        if convertToFEN(x) > 0:
-                                anal['FEN'].remove(x)
-        anal['sylCategory'] = getCatogoryFromTotalCards(anal, anal['SYL'][anal['sylSxd']][0])
-        for xs in XS.values():
-                if xs != anal['sylSxd']:
-                        for x in anal['SYL'][xs]:
-                                if getCatogoryFromTotalCards(anal, x) != anal['sylCategory']:
-                                        anal['conclusions'].append(xs+'无'+anal['sylCategory'])
-        pairList = getPairList(anal['SYL'][anal['sylSxd']])
-        if len(pairList) > 0:
-                for xs in XS.values():
-                        if xs != anal['sylSxd']:
-                                pairListXs = getPairList(anal['SYL'][xs])
-                                if not matchesPairList(getPairList(anal['SYL'][xs]), pairList):
-                                        anal['conclusions'].append(xs+'无'+anal['sylCategory']+'对')
-        del anal['sylSxd']
-def testAnalSylCategory():
-        anal = resetAnal('黑', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['黑3']
-        anal['SYL']['下家'] = ['红4']
-        anal['SYL']['对家'] = ['梅5']
-        anal['SYL']['上家'] = ['方6']
-
-        analOnceRoundFinished(anal)
-
-        assert anal['sylCategory'] == '红'
-utarray.append(testAnalSylCategory)
-def testLackOfColorBasic():
-        anal = resetAnal('黑', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['黑3']
-        anal['SYL']['下家'] = ['红4']
-        anal['SYL']['对家'] = ['梅5']
-        anal['SYL']['上家'] = ['方6']
-
-        analOnceRoundFinished(anal)
-
-        assert '本家无红' in anal['conclusions']
-        assert '对家无红' in anal['conclusions']
-        assert '上家无红' in anal['conclusions']
-utarray.append(testLackOfColorBasic)
-def testLackOfColorComplex():
-        anal = resetAnal('黑', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['黑3', '红3']
-        anal['SYL']['下家'] = ['红4', '红5']
-        anal['SYL']['对家'] = ['梅5', '红5']
-        anal['SYL']['上家'] = ['方6', '红6']
-
-        analOnceRoundFinished(anal)
-
-        assert '本家无红' in anal['conclusions']
-        assert '对家无红' in anal['conclusions']
-        assert '上家无红' in anal['conclusions']
-utarray.append(testLackOfColorComplex)
-def testLackOfZP():
-        anal = resetAnal('红', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['黑3']
-        anal['SYL']['下家'] = ['红4']
-        anal['SYL']['对家'] = ['梅5']
-        anal['SYL']['上家'] = ['方6']
-
-        analOnceRoundFinished(anal)
-
-        assert '本家无主' in anal['conclusions']
-        assert '对家无主' in anal['conclusions']
-        assert '上家无主' in anal['conclusions']
-utarray.append(testLackOfZP)
-def testLackOfZP2():
-        anal = resetAnal('红', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['黑3']
-        anal['SYL']['下家'] = ['大王']
-        anal['SYL']['对家'] = ['梅5']
-        anal['SYL']['上家'] = ['方6']
-
-        analOnceRoundFinished(anal)
-
-        assert '本家无主' in anal['conclusions']
-        assert '对家无主' in anal['conclusions']
-        assert '上家无主' in anal['conclusions']
-utarray.append(testLackOfZP2)
-def testLackOfPair():
-        anal = resetAnal('黑', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['红8', '红3']
-        anal['SYL']['下家'] = ['红4', '红4']
-        anal['SYL']['对家'] = ['红9', '红5']
-        anal['SYL']['上家'] = ['红J', '红6']
-
-        analOnceRoundFinished(anal)
-        assert '本家无红对' in anal['conclusions']
-        assert '对家无红对' in anal['conclusions']
-        assert '上家无红对' in anal['conclusions']
-utarray.append(testLackOfPair)
-def testLackOfPairComplex():
-        anal = resetAnal('黑', '2')
-        anal['sylSxd'] = '下家'
-        anal['SYL'] = {}
-        anal['SYL']['本家'] = ['红8', '红3']
-        anal['SYL']['下家'] = ['红4', '红4']
-        anal['SYL']['对家'] = ['黑5', '黑5']
-        anal['SYL']['上家'] = ['红J', '红6']
-
-        analOnceRoundFinished(anal)
-        assert '本家无红对' in anal['conclusions']
-        assert '对家无红对' in anal['conclusions']
-        assert '上家无红对' in anal['conclusions']
-utarray.append(testLackOfPairComplex)
-
-
-
-def analFromMem(anal, mem):
-        myLeftCardsCount = mem['LEFT_CARDS_COUNT'][XS[1]]
-        if myLeftCardsCount >= 25:
-                anal = resetAnal(HS[mem['ZP']['HS']], PM[mem['ZP']['PM']])
-                return
-
-        anal['myLeftCardsCount'] = myLeftCardsCount
-        anal['playedCountThisRound'] = mem['PLAYED_COUNT_THIS_ROUND']
-        anal['SYL'] = mem['SYL']
-
-def smartAnalAndPrint(anal):
-        if not 'status' in anal:
-                return
-        assert anal['status'] == 'ready' or anal['status'] == 'ongoing'
-
-        if analRoundFinished(anal):
-                if anal['status'] == 'ready':
-                        anal['status'] = 'ongoing'
-                analOnceRoundFinished(anal)
-                printAnal(anal)
-
-                if anal['myLeftCardsCount'] == 0:
-                        del anal['status']
-        else:
-                if not 'sylSxd' in anal:
-                        anal['sylSxd'] = analSxd(anal)
-
-def analRoundFinished(anal):
-        x = anal['playedCountThisRound']
-        for xs in XS.values():
-                if x[xs] is not 0:
-                        return True
-        return True
-
-def analSxd(anal):
-        tmp = anal['playedCountThisRound']
-        if (tmp[XS[1]] == 0):
-                if (tmp[XS[2]]> 0): return XS[2]
-                if (tmp[XS[3]]> 0): return XS[3]
-                return XS[4]
-        else:
-                if (tmp[XS[4]]== 0): return XS[1]
-                if (tmp[XS[3]]==0): return XS[4]
-                return XS[3]
-def testAnalSxd():
-        mem = {}
-        mem['playedCountThisRound'] = {}
-        def f(x,y): mem['playedCountThisRound'][XS[x]]=y
-        def g(y1,y2,y3,y4):
-                f(1,y1)
-                f(2,y2)
-                f(3,y3)
-                f(4,y4)
-        g(0,0,0,1)
-        assert analSxd(mem) == '上家'
-        g(0,0,1,1)
-        assert analSxd(mem) == '对家'
-        g(0,1,1,1)
-        assert analSxd(mem) == '下家'
-        g(1,0,0,0)
-        assert analSxd(mem) == '本家'
-        g(1,0,0,1)
-        assert analSxd(mem) == '上家'
-        g(1,0,1,1)
-        assert analSxd(mem) == '对家'
-utarray.append(testAnalSxd)
-
-
-def getCatogoryFromTotalCards(anal, p):
-        if getPmOfCard(p) == getPmOfCard(anal['zp']):
-                return HS[0]
-        elif getHsOfCard(p) == HS[0]:
-                return HS[0]
-        elif getHsOfCard(p) == getHsOfCard(anal['zp']):
-                return HS[0]
-        else:
-                return getHsOfCard(p)
-def testGetCatogory():
-        anal = {}
-        anal['zp'] = '黑2'
-        assert getCatogoryFromTotalCards(anal, '红2') == '主'
-        assert getCatogoryFromTotalCards(anal, '黑2') == '主'
-        assert getCatogoryFromTotalCards(anal, '黑3') == '主'
-        assert getCatogoryFromTotalCards(anal, '大王') == '主'
-        assert getCatogoryFromTotalCards(anal, '小王') == '主'
-        assert getCatogoryFromTotalCards(anal, '红3') == '红'
-        anal['zp'] = '主2'
-        assert getCatogoryFromTotalCards(anal, '红2') == '主'
-        assert getCatogoryFromTotalCards(anal, '黑3') == '黑'
-        assert getCatogoryFromTotalCards(anal, '大王') == '主'
-        assert getCatogoryFromTotalCards(anal, '小王') == '主'
-utarray.append(testGetCatogory)
-
-
-################### block of printing functions
-def printAnal(anal):
-        printLeftCards(anal)
-        printHistory(anal)
-        print(anal['conclusions'])
-        print('-------')
-
-def printHistory(anal):
-        x = anal['history']
-        for y in x:
-                print(y, x[y])
-
-def printLeftCards(anal):
-        for x in anal['cards']:
-                print(x,end=':')
-                for y in anal['cards'][x]:
-                        if x != HS[0]:
-                                print(y[1], end='')
-                        elif y[1] in PM[1:14] and y[1] != anal['zppm']:
-                                print(y[1], end='')
-                        else:
-                                print(' '+y, end='')
-                print()
-        print()
-
-
-################### initialize
-def resetCards(zphs, zppm):
-        assert zphs in HS
         assert zppm in [PM[x] for x in range(1,14)]
 
         ret = {}
 
         ret[HS[0]] = []
         for hs in HS[-4:]:
-                y = [PM[x] for x in range(2,14)]
-                y.append(PM[1])
-                y.remove(zppm)
+                pms = [PM[x] for x in range(2,14)]
+                pms.append(PM[1])
+                pms.remove(zppm)
 
                 x = []
-                for pm in y:
-                        x.append(''.join([hs,pm]))
-                        x.append(''.join([hs,pm]))
+                for pm in pms:
+                        x.append(makeACard(hs, pm))
+                        x.append(makeACard(hs, pm))
 
                 if hs == zphs:
                         ret[HS[0]].extend(x)
@@ -499,43 +381,43 @@ def resetCards(zphs, zppm):
 
         for hs in HS[-4:]:
                 if hs != zphs:
-                        ret[HS[0]].append(''.join([hs, zppm]))
-                        ret[HS[0]].append(''.join([hs, zppm]))
+                        ret[HS[0]].append(makeACard(hs, zppm))
+                        ret[HS[0]].append(makeACard(hs, zppm))
         if zphs != HS[0]:
-                ret[HS[0]].append(''.join([zphs, zppm]))
-                ret[HS[0]].append(''.join([zphs, zppm]))
-        ret[HS[0]].extend([PM[14],PM[14],PM[15],PM[15]])
-
-        totallen = 0
-        for x in ret:
-                totallen += len(ret[x])
-        assert totallen == 108
+                ret[HS[0]].append(makeACard(zphs, zppm))
+                ret[HS[0]].append(makeACard(zphs, zppm))
+        ret[HS[0]].append(makeACard(zphs, PM[14]))
+        ret[HS[0]].append(makeACard(zphs, PM[14]))
+        ret[HS[0]].append(makeACard(zphs, PM[15]))
+        ret[HS[0]].append(makeACard(zphs, PM[15]))
 
         return ret
 
-
-##################### test codes
-testing = 1==0
-if testing:
-        for ut in utarray:
-                ut()
-        print('ut passed')
-
 ##################### we start to read data from game and handle now.
-processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
-if processHandle != 0:
-        anal = {}
-        while 1==1 and not testing:
-                sleep(0.050)
-                mem = captureMem()
+if __name__ == '__main__':
+        processHandle = OpenProcess(PROCESS_ALL_ACCESS, False, pid)
+        if processHandle == 0:
+                print('open process failed')
+        else:
+                anal = resetAnal()
+                while 1==1:
+                        sleep(0.050)
+                        mem = captureMem()
 
-                assert mem['PLAYED_COUNT_SYL'][XS[1]] == mem['PLAYED_COUNT_SYL'][XS[2]]
-                assert mem['PLAYED_COUNT_SYL'][XS[1]] == mem['PLAYED_COUNT_SYL'][XS[3]]
-                assert mem['PLAYED_COUNT_SYL'][XS[1]] == mem['PLAYED_COUNT_SYL'][XS[4]]
+                        anal = analFromMem(anal, mem)
 
-                analFromMem(anal, mem)
+                        if not isGameOngoing(anal):
+                                print('.', end='')
+                                sys.stdout.flush()
+                                if anal['MY_LEFT_CARDS_COUNT'] >= 25:
+                                        anal = onZpReliable(anal)
+                                        print('new game')
+                                        printAnal(anal)
+                        else:
+                                anal = smartAnalyzeAndPrint(anal)
 
-                smartAnalAndPrint(anal)
+                                if anal['MY_LEFT_CARDS_COUNT'] == 0:
+                                        print('game finished')
+                                        anal = resetAnal()
 
-CloseHandle(processHandle)
-
+        CloseHandle(processHandle)
