@@ -82,7 +82,7 @@ def readByteAsInt(address):
         else:
                 return "Failed."
 
-readACardAsString = lambda address : ''.join([HS[readByteAsInt(address)], PM[readByteAsInt(address + 1)]])
+readACardAsString = lambda address : makeACard(HS[readByteAsInt(address)], PM[readByteAsInt(address + 1)])
 
 def captureMem():
         ret = {}
