@@ -305,23 +305,29 @@ def printAnal(anal):
         printHistory(anal)
         printLeftFen(anal)
         printConclusions(anal)
-        print('-------')
+        print('-----------------------------------------')
+        print('-----------------------------------------')
 
 def printLeftFen(anal):
         print('剩下的分牌(', end='')
         print(getTotalFenOfCardList(anal['FEN']), end='')
         print('分):', end='')
         print(''.join(anal['FEN']))
+        print()
 
 def printConclusions(anal):
-        print('conclusions:')
+        print('推断:', end='')
         print(anal['CONCLUSIONS'])
+        print()
 
 def printHistory(anal):
-        print('history:')
+        print('历史出牌纪录:')
         x = anal['HISTORY']
+        print('先手:', ''.join(x['SXD'])
         for y in x:
-                print(y, ''.join(x[y]))
+              if y != 'SXD':
+                      print(y, ''.join(x[y]))
+        print()
 
 def printLeftCards(anal):
         print('left cards:')
