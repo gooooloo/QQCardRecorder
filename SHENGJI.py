@@ -123,6 +123,12 @@ def getFenOfCard(card):
         fen = {PM[5]:5, PM[10]:10, PM[13]:10}
         return fen[pm] if pm in fen else 0
 
+def getTotalFenOfCardList(cardList):
+        sum = 0
+        for x in cardList:
+                sum += getFenOfCard(x)
+        return sum
+
 def getPairList(cardList):
         ret = []
         if len(cardList) < 2: return ret
@@ -297,8 +303,15 @@ def analyzeCategory(zpcard, p):
 def printAnal(anal):
         printLeftCards(anal)
         printHistory(anal)
+        printLeftFen(anal)
         printConclusions(anal)
         print('-------')
+
+def printLeftFen(anal):
+        print('剩下的分牌(', end='')
+        print(getTotalFenOfCardList(anal['FEN']), end='')
+        print('分):', end='')
+        print(''.join(anal['FEN']))
 
 def printConclusions(anal):
         print('conclusions:')
@@ -359,7 +372,7 @@ def resetFEN():
         for pm in [PM[5], PM[10], PM[13]]:
                 for hs in HS[-4:]:
                         for x in range(2):
-                                ret.append(''.join([hs, pm]))
+                                ret.append(makeACard(hs, pm))
         return ret
 
 def resetCards(zp):
