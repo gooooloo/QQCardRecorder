@@ -418,7 +418,6 @@ if __name__ == '__main__':
                                 sys.stdout.flush()
                                 if anal['MY_LEFT_CARDS_COUNT'] >= 25:
                                         anal = onZpReliable(anal)
-                                        print('new game')
                         else:
                                 anal = smartAnalyzeAndPrint(anal)
 
