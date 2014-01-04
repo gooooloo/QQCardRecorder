@@ -23,7 +23,7 @@ CloseHandle = windll.kernel32.CloseHandle
 PROC_NAME = 'NewsjRpg.exe'
 PROCESS_ALL_ACCESS = 0x1F0FFF
 
-HS = [ '主', '黑', '红', '梅', '方' ] # the index matches with its int value in memory
+HS = [ '主', '黑', '红', '花', '方' ] # the index matches with its int value in memory
 PM = [ '出错了', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '十', 'J', 'Q', 'K', '小王', '大王' ] # the index matches with its int value in memory
 SXD = ['出错了', '我先出牌', '下家先出牌', '对家先出牌', '上家先出牌' ] # the index matches with its int value in memory
 
