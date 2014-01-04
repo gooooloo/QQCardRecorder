@@ -179,9 +179,8 @@ def analyzeLackOfCategory(anal):
                 if xs != anal['SXD']:
                         for x in anal['SYL'][xs]:
                                 if analyzeCategory(anal['ZP'], x) != category:
-                                        st = xs+'无'+category
-                                        if not st in anal['CONCLUSIONS']:
-                                                anal['CONCLUSIONS'].append(st)
+                                        if not category in anal['LACK_OF'][xs]['CATEGORY']:
+                                                anal['LACK_OF'][xs]['CATEGORY'].append(category)
 
 def analyzeLackOfPair(anal):
         category = analyzeCategory(anal['ZP'], anal['SYL'][anal['SXD']][0])
@@ -190,10 +189,8 @@ def analyzeLackOfPair(anal):
                 for xs in XS.values():
                         if xs != anal['SXD']:
                                 if not matchesPairList(getPairList(anal['SYL'][xs]), pairList):
-                                        st = xs+'无'+category+'对'
-                                        if not st in anal['CONCLUSIONS']:
-                                                anal['CONCLUSIONS'].append(st)
-
+                                        if not category in anal['LACK_OF'][xs]['PAIR_FOR_CATEGORY']:
+                                                anal['LACK_OF'][xs]['PAIR_FOR_CATEGORY'].append(category)
 
 def analyzeOnRoundFinish(anal):
         updateHistory(anal)
@@ -304,7 +301,7 @@ def printAnal(anal):
         printLeftCards(anal)
         printHistory(anal)
         printLeftFen(anal)
-        printConclusions(anal)
+        printLackOf(anal)
         print('-----------------------------------------')
         print('-----------------------------------------')
 
@@ -315,15 +312,22 @@ def printLeftFen(anal):
         print(''.join(anal['FEN']))
         print()
 
-def printConclusions(anal):
+def printLackOf(anal):
         print('推断:', end='')
-        print(anal['CONCLUSIONS'])
+        for xs in XS.values():
+                print(xs+'无', end=':')
+                for y in anal['LACK_OF'][xs]['CATEGORY']:
+                        print(y, end=' ')
+                for y in anal['LACK_OF'][xs]['PAIR_FOR_CATEGORY']:
+                        if not y in anal['LACK_OF'][xs]['CATEGORY']:
+                                print(y, end='对 ')
+                print()
         print()
 
 def printHistory(anal):
         print('历史出牌纪录:')
         x = anal['HISTORY']
-        print('先手:', ''.join(x['SXD'])
+        print('先手:', ''.join(x['SXD']))
         for y in x:
               if y != 'SXD':
                       print(y, ''.join(x[y]))
@@ -351,13 +355,21 @@ def printLeftCards(anal):
 ################### initialize
 def resetAnal():
         anal = {}
-        anal['CONCLUSIONS'] = []
         anal['FEN'] = resetFEN()
         anal['HISTORY'] = resetHistory()
         anal['MAX_MY_LEFT_COUNT_IN_PAST'] = 0
         anal['SXD'] = 'none'
         anal['FOOTAGES'] = []
+        anal['LACK_OF'] = resetLackOf()
         return anal
+
+def resetLackOf():
+        ret = {}
+        for xs in XS.values():
+                ret[xs] = {}
+                ret[xs]['CATEGORY'] = []
+                ret[xs]['PAIR_FOR_CATEGORY'] = []
+        return ret
 
 def onZpReliable(anal):
         anal['ZP'] = makeACard(HS[anal['ZPHS']], PM[anal['ZPPM']])
