@@ -198,6 +198,16 @@ def analyzeOnRoundFinish(anal):
         updateFen(anal)
         analyzeLackOfCategory(anal)
         analyzeLackOfPair(anal)
+        analyzePossiblePairs(anal)
+
+def analyzePossiblePairs(anal):
+        anal['POSSIBLE_PAIRS'] = {}
+        for category in anal['CARDS']:
+                anal['POSSIBLE_PAIRS'][category] = []
+                cardList = anal['CARDS'][category]
+                for i in range(1, len(cardList)):
+                        if cardList[i-1] == cardList[i]:
+                                anal['POSSIBLE_PAIRS'][category].append(getPmOfCard(cardList[i]))
 
 # this is where the magic starts. All information we need from memory is these four things, and we will remember and analyze all other things!
 # AMAZING, isn't it? :)
@@ -299,11 +309,21 @@ def analyzeCategory(zpcard, p):
 ################### block of printing functions
 def printAnal(anal):
         printLeftCards(anal)
-        printHistory(anal)
+        #printHistory(anal)
         printLeftFen(anal)
         printLackOf(anal)
+        printPossiblePairs(anal)
         print('-----------------------------------------')
         print('-----------------------------------------')
+
+def printPossiblePairs(anal):
+        print('可能的对:')
+        for category in anal['POSSIBLE_PAIRS']:
+                print(category, end=':')
+                for x in anal['POSSIBLE_PAIRS'][category]:
+                        print(' '+x+x, end='')
+                print()
+        print()
 
 def printLeftFen(anal):
         print('剩下的分牌(', end='')
@@ -313,7 +333,7 @@ def printLeftFen(anal):
         print()
 
 def printLackOf(anal):
-        print('推断:', end='')
+        print('推断:')
         for xs in XS.values():
                 print(xs+'无', end=':')
                 for y in anal['LACK_OF'][xs]['CATEGORY']:
