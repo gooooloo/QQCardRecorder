@@ -169,6 +169,9 @@ def updateCards(anal):
                                 try: anal['CARDS'][y].remove(x)
                                 except: pass
 
+def updateCardsExceptMine(anal):
+        anal['CARDS_EXCEPT_MINE'] = exludeCards(anal['CARDS'], anal['MY_CARDS'])
+
 def updateFen(anal):
         for xs in XS.values():
                 for x in anal['SYL'][xs]:
@@ -197,6 +200,7 @@ def analyzeLackOfPair(anal):
 def analyzeOnRoundFinish(anal):
         updateHistory(anal)
         updateCards(anal)
+        updateCardsExceptMine(anal)
         updateFen(anal)
         analyzeLackOfCategory(anal)
         analyzeLackOfPair(anal)
@@ -401,11 +405,20 @@ def resetLackOf():
                 ret[xs]['PAIR_FOR_CATEGORY'] = []
         return ret
 
+def exludeCards(cardSetByCategory, cardListToExclude):
+        ret = cardSetByCategory
+        for card in cardListToExclude:
+                for x in ret:
+                        try: ret[x].remove(card)
+                        except: pass
+        return ret
+
 def onZpReliable(anal):
         anal['ZP'] = makeACard(HS[anal['ZPHS']], PM[anal['ZPPM']])
         del anal['ZPHS']
         del anal['ZPPM']
         anal['CARDS'] = resetCards(anal['ZP'])
+        anal['CARDS_EXCEPT_MINE'] = exludeCards(anal['CARDS'], anal['MY_CARDS'])
         return anal
 
 def resetHistory():
