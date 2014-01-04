@@ -4,6 +4,7 @@ from ctypes.wintypes import *
 from time import sleep
 import psutil
 import sys
+import copy
 
 ''' Vacabularies:
 HS - HuaSe (花色，如黑桃，方块等等)
@@ -318,6 +319,7 @@ def analyzeCategory(zpcard, p):
 def printAnal(anal):
         printMyCards(anal)
         printLeftCards(anal)
+        printLeftCardsExceptMine(anal)
         #printHistory(anal)
         printLeftFen(anal)
         printLackOf(anal)
@@ -368,13 +370,22 @@ def printHistory(anal):
         print()
 
 def printLeftCards(anal):
-        print('left cards:')
-        for category in anal['CARDS']:
+        print('所有剩下的牌:')
+        printCards(anal['CARDS'])
+        print()
+
+def printLeftCardsExceptMine(anal):
+        print('我之外剩下的牌:')
+        printCards(anal['CARDS_EXCEPT_MINE'])
+        print()
+
+def printCards(cards):
+        for category in cards:
                 print(category,end='')
                 print('(',end='')
-                print(len(anal['CARDS'][category]),end='')
+                print(len(cards[category]),end='')
                 print(')',end=':')
-                for card in anal['CARDS'][category]:
+                for card in cards[category]:
                         pm = getPmOfCard(card)
                         if category != HS[0]:
                                 print(pm, end='')
@@ -383,7 +394,6 @@ def printLeftCards(anal):
                         else:
                                 print(' '+card, end='')
                 print()
-        print()
 
 
 ################### initialize
@@ -406,7 +416,7 @@ def resetLackOf():
         return ret
 
 def exludeCards(cardSetByCategory, cardListToExclude):
-        ret = cardSetByCategory
+        ret = copy.deepcopy(cardSetByCategory)
         for card in cardListToExclude:
                 for x in ret:
                         try: ret[x].remove(card)
