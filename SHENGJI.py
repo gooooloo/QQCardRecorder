@@ -308,12 +308,15 @@ def printHistory(anal):
         print('history:')
         x = anal['HISTORY']
         for y in x:
-                print(y, x[y])
+                print(y, ''.join(x[y]))
 
 def printLeftCards(anal):
         print('left cards:')
         for category in anal['CARDS']:
-                print(category,end=':')
+                print(category,end='')
+                print('(',end='')
+                print(len(anal['CARDS'][category]),end='')
+                print(')',end=':')
                 for card in anal['CARDS'][category]:
                         pm = getPmOfCard(card)
                         if category != HS[0]:
@@ -416,7 +419,6 @@ if __name__ == '__main__':
                                 if anal['MY_LEFT_CARDS_COUNT'] >= 25:
                                         anal = onZpReliable(anal)
                                         print('new game')
-                                        printAnal(anal)
                         else:
                                 anal = smartAnalyzeAndPrint(anal)
 
