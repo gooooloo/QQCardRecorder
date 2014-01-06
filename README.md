@@ -1,4 +1,8 @@
 QQCardRecorder
 ==============
 
-QQ游戏 欢乐升级 记牌器
+QQ游戏升级记牌器 - SHENGJI.py
+requires python 3.0+
+requires psutil module
+
+
