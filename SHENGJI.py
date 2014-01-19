@@ -5,6 +5,7 @@ from time import sleep
 import psutil
 import sys
 import copy
+import SHENGJI.Save.Load
 
 ''' Vacabularies:
 HS - HuaSe (花色，如黑桃，方块等等)
@@ -318,12 +319,12 @@ def analyzeCategory(zpcard, p):
 ################### block of printing functions
 def printAnal(anal):
         printMyCards(anal)
-        printLeftCards(anal)
+        #printLeftCards(anal) # anoying while not so much value, so don't print
         printLeftCardsExceptMine(anal)
+        printPossiblePairsExceptMine(anal)
         #printHistory(anal)
         printLeftFen(anal)
         printLackOf(anal)
-        printPossiblePairsExceptMine(anal)
         print('-----------------------------------------')
         print('-----------------------------------------')
 
@@ -344,7 +345,7 @@ def printPossiblePairsExceptMine(anal):
 def printLeftFen(anal):
         print('剩下的分牌(', end='')
         print(getTotalFenOfCardList(anal['FEN']), end='')
-        print('分):', end='')
+        print('分):')
         print(''.join(anal['FEN']))
         print()
 
@@ -507,6 +508,8 @@ if __name__ == '__main__':
 
                                 if anal['MY_CARDS_COUNT'] == 0:
                                         print('game finished')
+                                        filename = saveGame(anal)
+                                        uploadFile(filename)
                                         anal = resetAnal()
 
         CloseHandle(processHandle)
