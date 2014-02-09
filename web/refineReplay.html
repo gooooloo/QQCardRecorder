@@ -1,0 +1,70 @@
+<html>
+	<head>
+		<style>
+			ul{float:left; width:100%; list-style-type:none; padding:0; margin:0;}
+			button{border:none; background:none; padding:0;display:table-cell;background:red;text-color:white:}
+			div.topContainer{margin-bottom:10px;display:flex;flex-direction:column-reverse;width:auto;text-align:center; height:160px;}
+			div.bottomContainer{margin-top:10px;width:auto;text-align:center; height:auto;}
+			div.parent{display:table;width:auto; height:160px;;vertical-align:middle;}
+			div.child{display:table-cell;min-width:300px;text-align:center;;vertical-align:middle;}
+			div.infoboard{display:table-cell;width:100%;text-align:center;border: 4px double red;;vertical-align:middle;}
+		</style>
+	</head>
+	<body>
+		<div class="topContainer">
+			<div id="DJ" > </div>
+			<div>-----------------------------------</div>
+			<div id="DJCARDS"> XXXX </div>
+		</div>
+		<div class="parent">
+			<div class="child">
+				<div id="SJ"> </div>
+				<div>-----------------------------------</div>
+				<div id="SJCARDS"> XXXX </div>
+			</div>
+			<div class="infoboard">
+				<p id="ZHUJIPAI">XX</p>
+				<p id="ROUNDCOUNT">ROUND XX</p>
+			</div>
+			<div class="child">
+				<div id="XJ"> </div>
+				<div>-----------------------------------</div>
+				<div id="XJCARDS"> XXXX </div>
+			</div>
+		</div>
+		<div class="bottomContainer">
+			<div id="BJ"> </div>
+			<div>-----------------------------------</div>
+			<div id="MYCARDS"> XXXX </div>
+		</div>
+		<div id="buttonbar" class="parent">
+			<button id="lastround" onclick="backward1round()">上一轮</button>
+			<button id="nextround" onclick="forward1round()">下一轮</button>
+			<button id="clockwise" onclick="changeViewPointClockwise()">顺时针旋转视角</button>
+			<button id="counterclockwise" onclick="changeViewPointCounterClockwise()">逆时针旋转视角</button>
+		</div>
+	</body>
+
+	<script type="text/javascript" src="jquery-2.1.0.js"></script>
+	<script type="text/javascript" src="shortcut.js"></script>
+	<script type="text/javascript" src="urlparser.js"></script>
+	<script type="text/javascript" src="model.js"></script>
+	<script type="text/javascript" src="flow.js"></script>
+	<script type="text/javascript" src="replay.js"></script>
+	<script type="text/javascript">
+		a = fetchDecodedGameFromUrl();
+		if (a) {
+			replay(a);
+			reset();
+			shortcut.add("Enter", play);
+			shortcut.add("Space", play);
+			shortcut.add("h", backward1round);
+			shortcut.add("l", forward1round);
+			shortcut.add("Left", backward1round);
+			shortcut.add("Right", forward1round);
+			shortcut.add("Up", changeViewPointClockwise);
+			shortcut.add("Down", changeViewPointCounterClockwise);
+		} else { document.getElementById("MYCARDS").innerText="ERROR! NO DATA!";}
+
+</script>
+</html>
