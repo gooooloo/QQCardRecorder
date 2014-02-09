@@ -5,7 +5,7 @@ from time import sleep
 import psutil
 import sys
 import copy
-import SHENGJI.Save.Load
+from SHENGJISaveLoad import *
 
 ''' Vacabularies:
 HS - HuaSe (花色，如黑桃，方块等等)
