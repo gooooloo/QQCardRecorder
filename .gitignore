@@ -38,3 +38,6 @@ nosetests.xml
 # gvim modified file backup
 *.*~
 *.*.swp
+
+#record files
+game.recored*
