@@ -1,48 +1,50 @@
 <html>
 	<head>
 		<style>
-			ul{float:left; width:100%; list-style-type:none; padding:0; margin:0;}
-			button{border:none; background:none; padding:0;display:table-cell;background:red;text-color:white:}
-			div.topContainer{margin-bottom:10px;display:flex;flex-direction:column-reverse;width:auto;text-align:center; height:160px;}
+			div.topContainer{margin-bottom:10px;display:flex;flex-direction:column-reverse;width:auto;text-align:center;}
 			div.bottomContainer{margin-top:10px;width:auto;text-align:center; height:auto;}
 			div.parent{display:table;width:auto; height:160px;;vertical-align:middle;}
 			div.child{display:table-cell;min-width:300px;text-align:center;;vertical-align:middle;}
 			div.infoboard{display:table-cell;width:100%;text-align:center;border: 4px double blue;;vertical-align:middle;}
-			#buttonbar{width:100%;}
+			button{width:25%; float:left; border:dotted 1px blue; height:66px; text-color:white:}
+			#buttonbar{padding:0px;width:100%; height:66px; position:absolute; bottom:0;}
+			#whole{width:100%; height:100%; position:absolute; }
 		</style>
 	</head>
 	<body>
-		<div class="topContainer">
-			<div id="DJ" > </div>
-			<div>-----------------------------------</div>
-			<div id="DJCARDS"> XXXX </div>
-		</div>
-		<div class="parent">
-			<div class="child">
-				<div id="SJ"> </div>
+		<div id="whole">
+			<div class="topContainer">
+				<div id="DJ" > </div>
 				<div>-----------------------------------</div>
-				<div id="SJCARDS"> XXXX </div>
+				<div id="DJCARDS"> XXXX </div>
 			</div>
-			<div class="infoboard">
-				<p id="ZHUJIPAI">XX</p>
-				<p id="ROUNDCOUNT">ROUND XX</p>
+			<div class="parent">
+				<div class="child">
+					<div id="SJ"> </div>
+					<div>-----------------------------------</div>
+					<div id="SJCARDS"> XXXX </div>
+				</div>
+				<div class="infoboard">
+					<p id="ZHUJIPAI">XX</p>
+					<p id="ROUNDCOUNT">ROUND XX</p>
+				</div>
+				<div class="child">
+					<div id="XJ"> </div>
+					<div>-----------------------------------</div>
+					<div id="XJCARDS"> XXXX </div>
+				</div>
 			</div>
-			<div class="child">
-				<div id="XJ"> </div>
+			<div class="bottomContainer">
+				<div id="BJ"> </div>
 				<div>-----------------------------------</div>
-				<div id="XJCARDS"> XXXX </div>
+				<div id="MYCARDS"> XXXX </div>
 			</div>
-		</div>
-		<div class="bottomContainer">
-			<div id="BJ"> </div>
-			<div>-----------------------------------</div>
-			<div id="MYCARDS"> XXXX </div>
-		</div>
-		<div id="buttonbar">
-			<button id="lastround" onclick="backward1round()">上一轮</button>
-			<button id="nextround" onclick="forward1round()">下一轮</button>
-			<button id="clockwise" onclick="changeViewPointClockwise()">顺时针旋转视角</button>
-			<button id="counterclockwise" onclick="changeViewPointCounterClockwise()">逆时针旋转视角</button>
+			<div id="buttonbar">
+				<button id="lastround" onclick="backward1round()">上一轮</button>
+				<button id="nextround" onclick="forward1round()">下一轮</button>
+				<button id="clockwise" onclick="changeViewPointClockwise()">顺时针旋转视角</button>
+				<button id="counterclockwise" onclick="changeViewPointCounterClockwise()">逆时针旋转视角</button>
+			</div>
 		</div>
 	</body>
 
