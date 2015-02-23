@@ -26,6 +26,7 @@ CloseHandle = windll.kernel32.CloseHandle
 
 PROC_NAME = 'NewsjRpg.exe'
 PROCESS_ALL_ACCESS = 0x1F0FFF
+UPLOAD_RESULT = True
 
 HS = [ '主', '黑', '红', '梅', '方' ] # the index matches with its int value in memory
 PM = { 1:'A', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9', 10:'十', 11:'J', 12:'Q', 13:'K', 14:'小王', 15:'大王' }
@@ -65,7 +66,7 @@ ADD_DEPENDENCY={
 def getPid(proc_name):
         for proc in psutil.process_iter():
                 try:
-                        if proc.name == proc_name:
+                        if proc.name() == proc_name:
                                 return proc.pid
                 except (psutil.AccessDenied) as e:
                         ignoreExceptionBecauseOfPsUtilBug =("psutil.AccessDenied")
@@ -82,7 +83,7 @@ def readByteAsInt(address):
                 #print(hex(address), ord(cval.value))
                 return ord(cval.value)
         else:
-                return "Failed."
+                return readByteAsInt(address)
 
 readACardAsString = lambda address : makeACard(HS[readByteAsInt(address)], PM[readByteAsInt(address + 1)])
 
@@ -178,7 +179,8 @@ def updateFen(anal):
         for xs in XS.values():
                 for x in anal['SYL'][xs]:
                         if getFenOfCard(x) > 0:
-                                anal['FEN'].remove(x)
+                                if x in anal['FEN']:
+                                        anal['FEN'].remove(x)
 
 def analyzeLackOfCategory(anal):
         category = analyzeCategory(anal['ZP'], anal['SYL'][anal['SXD']][0])
@@ -507,8 +509,9 @@ if __name__ == '__main__':
 
                                 if anal['MY_CARDS_COUNT'] == 0:
                                         print('game finished')
-                                        filename = saveGame(anal)
-                                        uploadFile(filename)
+                                        if UPLOAD_RESULT:
+                                                filename = saveGame(anal)
+                                                uploadFile(filename)
                                         anal = resetAnal()
 
         CloseHandle(processHandle)
